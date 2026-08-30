@@ -1,0 +1,122 @@
+[
+  {
+    "case_id": "KYC-001",
+    "applicant_id": "APP-001",
+    "scenario": "All required documents are present, readable, valid, and all customer information matches.",
+    "expected": "APPROVE"
+  },
+  {
+    "case_id": "KYC-002",
+    "applicant_id": "APP-002",
+    "scenario": "All documents are valid and the applicant information is consistent across documents.",
+    "expected": "APPROVE"
+  },
+  {
+    "case_id": "KYC-003",
+    "applicant_id": "APP-003",
+    "scenario": "All documents are valid and readable with no identity or address discrepancies.",
+    "expected": "APPROVE"
+  },
+  {
+    "case_id": "KYC-004",
+    "applicant_id": "APP-004",
+    "scenario": "Name appears as 'Mohammad Irfan Sheikh' on one document and 'Mohammed Irfan Shaikh' on another. DOB and other information match.",
+    "expected": "APPROVE"
+  },
+  {
+    "case_id": "KYC-005",
+    "applicant_id": "APP-005",
+    "scenario": "Applicant has a minor spelling variation in the name across documents, while DOB and address match.",
+    "expected": "APPROVE"
+  },
+  {
+    "case_id": "KYC-006",
+    "applicant_id": "APP-006",
+    "scenario": "Applicant DOB differs between PAN-like document and Aadhaar-like document.",
+    "expected": "ESCALATE"
+  },
+  {
+    "case_id": "KYC-007",
+    "applicant_id": "APP-007",
+    "scenario": "Applicant name matches across documents but date of birth is inconsistent.",
+    "expected": "ESCALATE"
+  },
+  {
+    "case_id": "KYC-008",
+    "applicant_id": "APP-008",
+    "scenario": "Applicant address on identity document differs significantly from the submitted address proof.",
+    "expected": "ESCALATE"
+  },
+  {
+    "case_id": "KYC-009",
+    "applicant_id": "APP-009",
+    "scenario": "House number and locality in the applicant address do not match the submitted address proof.",
+    "expected": "ESCALATE"
+  },
+  {
+    "case_id": "KYC-010",
+    "applicant_id": "APP-010",
+    "scenario": "Applicant submitted identity documents but no address proof.",
+    "expected": "MORE_DOCUMENTS"
+  },
+  {
+    "case_id": "KYC-011",
+    "applicant_id": "APP-011",
+    "scenario": "Applicant submitted PAN-like document and address proof but identity document is missing.",
+    "expected": "MORE_DOCUMENTS"
+  },
+  {
+    "case_id": "KYC-012",
+    "applicant_id": "APP-012",
+    "scenario": "Submitted document is expired according to the synthetic test data.",
+    "expected": "MORE_DOCUMENTS"
+  },
+  {
+    "case_id": "KYC-013",
+    "applicant_id": "APP-013",
+    "scenario": "Identity document is blurred and important fields cannot be reliably extracted by OCR.",
+    "expected": "ESCALATE"
+  },
+  {
+    "case_id": "KYC-014",
+    "applicant_id": "APP-014",
+    "scenario": "Document image has poor quality and OCR produces uncertain values for the applicant name and DOB.",
+    "expected": "ESCALATE"
+  },
+  {
+    "case_id": "KYC-015",
+    "applicant_id": "APP-015",
+    "scenario": "Applicant photograph does not sufficiently match the submitted identity photograph in this synthetic scenario.",
+    "expected": "ESCALATE"
+  },
+  {
+    "case_id": "KYC-016",
+    "applicant_id": "APP-016",
+    "scenario": "Synthetic document contains visual indicators of alteration or tampering.",
+    "expected": "ESCALATE"
+  },
+  {
+    "case_id": "KYC-017",
+    "applicant_id": "APP-017",
+    "scenario": "Applicant name is similar to an OFAC record, but DOB and other available identifiers do not match.",
+    "expected": "CLEAR"
+  },
+  {
+    "case_id": "KYC-018",
+    "applicant_id": "APP-018",
+    "scenario": "Applicant name and DOB match a synthetic/selected OFAC record closely enough to require review.",
+    "expected": "ESCALATE"
+  },
+  {
+    "case_id": "KYC-019",
+    "applicant_id": "APP-019",
+    "scenario": "Applicant has multiple legitimate name variations across documents, while DOB and address remain consistent.",
+    "expected": "APPROVE"
+  },
+  {
+    "case_id": "KYC-020",
+    "applicant_id": "APP-020",
+    "scenario": "Applicant has multiple issues including an identity mismatch and address mismatch.",
+    "expected": "ESCALATE"
+  }
+]
