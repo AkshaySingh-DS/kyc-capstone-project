@@ -8,10 +8,9 @@ from retriever import RBIPolicyRetriever
 # Configuration
 # ---------------------------------------------------------
 
-MODEL_ID = "ibm/granite-4-h-small"
-
+MODEL_ID  = "meta-llama/llama-4-maverick-17b-128e-instruct-fp8"
+# MODEL_ID = "ibm/granite-4-h-small"
 WATSONX_URL = "https://us-south.ml.cloud.ibm.com"
-
 PROJECT_ID = "skills-network"
 
 
@@ -23,14 +22,10 @@ class RBIPolicyAnswer:
 
     def __init__(self):
 
-        # Watsonx credentials
-        # Authentication is already configured in the
-        # Skills Network lab environment.
         credentials = Credentials(
             url=WATSONX_URL
         )
 
-        # Watsonx LLM
         self.model = ModelInference(
             model_id=MODEL_ID,
             credentials=credentials,
@@ -41,17 +36,12 @@ class RBIPolicyAnswer:
             }
         )
 
-        # RBI policy retriever
         self.retriever = RBIPolicyRetriever()
 
-    def answer(self, question: str, top_k: int = 3) -> dict:
-        """
-        Retrieve relevant RBI policy sections and generate
-        an answer using only the retrieved evidence.
-        """
+    def answer(self, question: str, top_k: int = 5) -> dict:
 
         # -------------------------------------------------
-        # 1. Retrieve relevant policy sections
+        # 1. Retrieve RBI policy evidence
         # -------------------------------------------------
 
         results = self.retriever.search(
@@ -81,7 +71,7 @@ class RBIPolicyAnswer:
 
             context_parts.append(
                 f"""
-SOURCE {i + 1}
+--- RBI POLICY SOURCE {i + 1} ---
 
 Title:
 {metadata.get("title", "Unknown")}
@@ -89,10 +79,10 @@ Title:
 Section:
 {metadata.get("section_id", "Unknown")}
 
-Pages:
+PDF Pages:
 {metadata.get("pages", "Unknown")}
 
-Content:
+Policy Text:
 {document}
 """
             )
@@ -100,36 +90,58 @@ Content:
         context = "\n".join(context_parts)
 
         # -------------------------------------------------
-        # 3. Strict RAG prompt
+        # 3. Strict policy prompt
         # -------------------------------------------------
 
         prompt = f"""
-You are an RBI KYC policy assistant.
+You are an RBI KYC Policy Assistant.
 
-Answer the user's question ONLY using the retrieved
-RBI policy evidence provided below.
+Your task is to answer the user's question using ONLY
+the RBI policy passages provided below.
 
-IMPORTANT RULES:
+IMPORTANT INSTRUCTIONS:
 
-1. Do not invent RBI requirements.
-2. Do not use outside knowledge.
-3. Do not make assumptions.
-4. If the evidence is insufficient, say:
+1. The provided RBI policy passages are the ONLY source
+   of truth.
+
+2. Read the passages carefully and determine whether they
+   contain an answer to the user's question.
+
+3. Understand the meaning of the question semantically.
+   The wording of the question does not need to exactly
+   match the wording in the policy.
+
+4. If a retrieved policy passage directly answers the
+   question, provide the answer based on that passage.
+
+5. Do NOT invent, assume, or add any RBI requirement that
+   is not present in the retrieved passages.
+
+6. If the retrieved passages genuinely do not contain
+   enough information to answer the question, respond:
+
    "Insufficient evidence in the retrieved RBI policy."
-5. Keep the answer concise and factual.
-6. Mention the relevant section and page when available.
+
+7. Keep the answer concise and factual.
+
+8. Always mention the relevant RBI section and PDF page
+   when the information is available.
 
 USER QUESTION:
 {question}
 
-RETRIEVED RBI POLICY EVIDENCE:
+RETRIEVED RBI POLICY:
+
 {context}
+
+Now answer the user's question using ONLY the retrieved
+RBI policy evidence.
 
 ANSWER:
 """
 
         # -------------------------------------------------
-        # 4. Call Watsonx
+        # 4. Generate answer using Watsonx
         # -------------------------------------------------
 
         try:
@@ -143,13 +155,10 @@ ANSWER:
                 ]
             )
 
-            answer = response[
-                "choices"
-            ][0][
-                "message"
-            ][
-                "content"
-            ].strip()
+            answer = (
+                response["choices"][0]["message"]["content"]
+                .strip()
+            )
 
         except Exception as e:
 
@@ -181,7 +190,7 @@ ANSWER:
 
 
 # ---------------------------------------------------------
-# Simple test
+# Test
 # ---------------------------------------------------------
 
 if __name__ == "__main__":
@@ -206,3 +215,4 @@ if __name__ == "__main__":
             f"Section: {source['section']} | "
             f"Pages: {source['pages']}"
         )
+
