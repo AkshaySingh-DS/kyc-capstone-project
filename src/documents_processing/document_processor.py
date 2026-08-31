@@ -542,10 +542,10 @@ if __name__ == "__main__":
     # ---------------------------------------------------------
     # Change this path when testing another document
     # ---------------------------------------------------------
+    
 
     image_path = (
-        "/home/labuser/Desktop/demo/"
-        "1801398-my-repo/"
+        "/home/project/kyc-capstone-project/"
         "synthetic_documents/"
         "APP-001/"
         "aadhar.png"
