@@ -548,7 +548,7 @@ if __name__ == "__main__":
         "/home/project/kyc-capstone-project/"
         "synthetic_documents/"
         "APP-001/"
-        "aadhar.png"
+        "address_proof.png"
     )
 
     # ---------------------------------------------------------
