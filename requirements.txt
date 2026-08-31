@@ -1,7 +1,6 @@
 paddlepaddle
 paddleocr
 opencv-python
-chromadb
 sentence-transformers
 openai
 langchain-openai
