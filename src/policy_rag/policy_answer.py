@@ -1,7 +1,5 @@
-import logging
-
-from ibm_watsonx_ai import Credentials
 from ibm_watsonx_ai.foundation_models import ModelInference
+from ibm_watsonx_ai import Credentials
 
 from retriever import RBIPolicyRetriever
 
@@ -10,28 +8,29 @@ from retriever import RBIPolicyRetriever
 # Configuration
 # ---------------------------------------------------------
 
-WATSONX_URL = "https://us-south.ml.cloud.ibm.com"
-PROJECT_ID = "skills-network"
 MODEL_ID = "ibm/granite-4-h-small"
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+WATSONX_URL = "https://us-south.ml.cloud.ibm.com"
+
+PROJECT_ID = "skills-network"
 
 
 # ---------------------------------------------------------
-# RBI Policy Answerer
+# Policy Answer
 # ---------------------------------------------------------
 
-class RBIPolicyAnswerer:
+class RBIPolicyAnswer:
 
     def __init__(self):
 
-        # WatsonX credentials
+        # Watsonx credentials
+        # Authentication is already configured in the
+        # Skills Network lab environment.
         credentials = Credentials(
             url=WATSONX_URL
         )
 
-        # WatsonX LLM
+        # Watsonx LLM
         self.model = ModelInference(
             model_id=MODEL_ID,
             credentials=credentials,
@@ -42,52 +41,55 @@ class RBIPolicyAnswerer:
             }
         )
 
-        # Existing RBI retriever
+        # RBI policy retriever
         self.retriever = RBIPolicyRetriever()
 
-    def answer(self, question: str) -> str:
+    def answer(self, question: str, top_k: int = 3) -> dict:
+        """
+        Retrieve relevant RBI policy sections and generate
+        an answer using only the retrieved evidence.
+        """
 
         # -------------------------------------------------
-        # 1. Retrieve relevant RBI policy sections
+        # 1. Retrieve relevant policy sections
         # -------------------------------------------------
-
-        logger.info("Retrieving RBI policy evidence...")
 
         results = self.retriever.search(
             question,
-            top_k=3
+            top_k=top_k
         )
 
-        documents = results["documents"][0]
-        metadatas = results["metadatas"][0]
+        documents = results.get("documents", [[]])[0]
+        metadatas = results.get("metadatas", [[]])[0]
 
         if not documents:
-            return (
-                "The retrieved RBI evidence is insufficient "
-                "to answer this question."
-            )
+            return {
+                "question": question,
+                "answer": "Insufficient evidence in the retrieved RBI policy.",
+                "sources": []
+            }
 
         # -------------------------------------------------
-        # 2. Build evidence context
+        # 2. Build context
         # -------------------------------------------------
 
-        evidence = []
+        context_parts = []
 
         for i, document in enumerate(documents):
 
             metadata = metadatas[i]
 
-            evidence.append(
+            context_parts.append(
                 f"""
 SOURCE {i + 1}
 
-Section:
+Title:
 {metadata.get("title", "Unknown")}
 
-Section ID:
+Section:
 {metadata.get("section_id", "Unknown")}
 
-Source Pages:
+Pages:
 {metadata.get("pages", "Unknown")}
 
 Content:
@@ -95,65 +97,40 @@ Content:
 """
             )
 
-        evidence_text = "\n".join(evidence)
+        context = "\n".join(context_parts)
 
         # -------------------------------------------------
-        # 3. Strict RBI-grounded prompt
+        # 3. Strict RAG prompt
         # -------------------------------------------------
 
         prompt = f"""
-You are an RBI KYC Policy Assistant.
+You are an RBI KYC policy assistant.
 
-Answer the user's question ONLY using the RBI policy
-evidence provided below.
+Answer the user's question ONLY using the retrieved
+RBI policy evidence provided below.
 
-STRICT RULES:
+IMPORTANT RULES:
 
-1. Use only the provided RBI evidence.
-2. Do not use your general knowledge.
-3. Do not invent RBI rules.
-4. Do not infer regulatory requirements that are not
-   explicitly supported by the evidence.
-5. If the evidence is insufficient, say:
-   "The retrieved RBI evidence is insufficient to answer
-   this question."
-6. Mention the relevant RBI section.
-7. Mention the source page numbers.
-8. Keep the answer concise and clear.
+1. Do not invent RBI requirements.
+2. Do not use outside knowledge.
+3. Do not make assumptions.
+4. If the evidence is insufficient, say:
+   "Insufficient evidence in the retrieved RBI policy."
+5. Keep the answer concise and factual.
+6. Mention the relevant section and page when available.
 
-RBI POLICY EVIDENCE
-===================
-
-{evidence_text}
-
-
-USER QUESTION
-=============
-
+USER QUESTION:
 {question}
 
+RETRIEVED RBI POLICY EVIDENCE:
+{context}
 
-RESPONSE FORMAT
-===============
-
-Answer:
-<answer based only on the retrieved evidence>
-
-RBI Evidence:
-<relevant section>
-
-Source Pages:
-<page numbers>
-
-Confidence:
-HIGH / MEDIUM / LOW
+ANSWER:
 """
 
         # -------------------------------------------------
-        # 4. Call WatsonX Granite
+        # 4. Call Watsonx
         # -------------------------------------------------
-
-        logger.info("Sending RBI evidence to WatsonX LLM...")
 
         try:
 
@@ -166,63 +143,66 @@ HIGH / MEDIUM / LOW
                 ]
             )
 
+            answer = response[
+                "choices"
+            ][0][
+                "message"
+            ][
+                "content"
+            ].strip()
+
         except Exception as e:
 
-            logger.error(
-                f"WatsonX model inference failed: {e}"
-            )
-
-            return "Unable to generate the policy answer."
+            return {
+                "question": question,
+                "answer": f"LLM generation failed: {str(e)}",
+                "sources": []
+            }
 
         # -------------------------------------------------
-        # 5. Extract response
+        # 5. Build sources
         # -------------------------------------------------
 
-        try:
+        sources = []
 
-            answer = (
-                response["choices"][0]
-                ["message"]["content"]
-                .strip()
-            )
+        for metadata in metadatas:
 
-        except (KeyError, IndexError, TypeError) as e:
+            sources.append({
+                "section": metadata.get("section_id"),
+                "title": metadata.get("title"),
+                "pages": metadata.get("pages")
+            })
 
-            logger.error(
-                f"Unexpected WatsonX response format: {e}"
-            )
-
-            return "Unable to parse the policy answer."
-
-        return answer
+        return {
+            "question": question,
+            "answer": answer,
+            "sources": sources
+        }
 
 
 # ---------------------------------------------------------
-# Simple CLI Test
+# Simple test
 # ---------------------------------------------------------
 
 if __name__ == "__main__":
 
-    print("\n========================================")
-    print("      RBI KYC POLICY ASSISTANT")
-    print("========================================")
-
-    answerer = RBIPolicyAnswerer()
+    policy_answer = RBIPolicyAnswer()
 
     question = input(
         "\nAsk an RBI KYC policy question: "
-    ).strip()
+    )
 
-    if not question:
+    result = policy_answer.answer(question)
 
-        print("\nPlease enter a question.")
+    print("\n===== POLICY ANSWER =====\n")
 
-    else:
+    print(result["answer"])
+
+    print("\n===== SOURCES =====\n")
+
+    for source in result["sources"]:
 
         print(
-            "\n===== RBI POLICY ANSWER =====\n"
+            f"Section: {source['section']} | "
+            f"Pages: {source['pages']}"
         )
-
-        answer = answerer.answer(question)
-
-        print(answer)
