@@ -26,19 +26,14 @@ def load_applicants():
         return json.load(file)
 
 
-def process_applicant(applicant):
+def process_applicant(applicant, processor):
     """
-    Process all documents belonging to one applicant
-    using the real document-processing pipeline.
+    Process all documents belonging to one applicant.
     """
 
     applicant_id = applicant["applicant_id"]
 
-    applicant_dir = (
-        DOCUMENTS_DIR / applicant_id
-    )
-
-    processor = DocumentProcessor()
+    applicant_dir = DOCUMENTS_DIR / applicant_id
 
     documents = [
         "aadhar.png",
@@ -48,20 +43,31 @@ def process_applicant(applicant):
 
     extracted_documents = []
 
+    print(f"  Applicant directory: {applicant_dir}")
+
     for document_name in documents:
 
-        image_path = (
-            applicant_dir / document_name
-        )
+        image_path = applicant_dir / document_name
+
+        print(f"  Checking: {image_path}")
 
         if not image_path.exists():
+            print(f"  Missing: {document_name}")
             continue
+
+        print(f"  Starting OCR: {document_name}")
 
         result = processor.process_document(
             str(image_path)
         )
 
+        print(f"  Finished OCR: {document_name}")
+
         extracted_documents.append(result)
+
+    print(
+        f"  Finished applicant: {applicant_id}"
+    )
 
     return extracted_documents
 
@@ -98,7 +104,11 @@ def main():
 
     applicants = load_applicants()
 
-    # processor = DocumentProcessor()
+    # -------------------------------------------------
+    # Initialize expensive components ONCE
+    # -------------------------------------------------
+
+    processor = DocumentProcessor()
     verifier = IdentityVerifier()
 
     print(
@@ -124,7 +134,8 @@ def main():
         # -------------------------------------------------
 
         documents = process_applicant(
-            applicant
+            applicant,
+            processor
         )
 
         print(
@@ -141,9 +152,6 @@ def main():
 
         # -------------------------------------------------
         # Expected customer identity
-        #
-        # This comes from our synthetic customer
-        # master data.
         # -------------------------------------------------
 
         expected = {
