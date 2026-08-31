@@ -8,8 +8,20 @@ from src.identity.normalizer import normalize_name
 # Configuration
 # ---------------------------------------------------------
 
-NAME_CANDIDATE_THRESHOLD = 0.75
-REVIEW_THRESHOLD = 0.75
+# Minimum similarity required to create an OFAC candidate.
+#
+# This prevents weak surname-only matches such as:
+#
+#   Rahul Sharma
+#   Rakesh Sharma
+#
+# from automatically becoming REVIEW candidates.
+NAME_CANDIDATE_THRESHOLD = 0.85
+
+# Strong name match.
+STRONG_NAME_THRESHOLD = 0.90
+
+# Overall candidate thresholds.
 POTENTIAL_MATCH_THRESHOLD = 0.90
 
 
@@ -25,15 +37,15 @@ class SanctionsScreener:
 
         Applicant
             ↓
-        Normalize name
+        Normalize identity
             ↓
-        Compare with OFAC names and aliases
+        Candidate generation
             ↓
-        Generate candidates
+        Fuzzy name comparison
             ↓
-        Compare DOB
+        DOB comparison
             ↓
-        Compare country
+        Country comparison
             ↓
         Candidate scoring
             ↓
@@ -69,10 +81,10 @@ class SanctionsScreener:
         ofac_name: str
     ) -> float:
         """
-        Compare applicant name with an OFAC name.
+        Compare two names using fuzzy matching.
 
         Returns:
-            Similarity score between 0 and 1.
+            Similarity between 0 and 1.
         """
 
         applicant_name = normalize_name(
@@ -111,8 +123,8 @@ class SanctionsScreener:
         Returns:
 
             True  -> DOB matches
-            False -> DOB available but does not match
-            None  -> DOB information unavailable
+            False -> DOB available but mismatches
+            None  -> DOB unavailable
         """
 
         if not applicant_dob:
@@ -159,17 +171,11 @@ class SanctionsScreener:
         Compare applicant country against OFAC
         country information.
 
-        Countries can come from:
-
-        - addresses
-        - nationalities
-        - citizenships
-
         Returns:
 
             True  -> country matches
-            False -> country available but does not match
-            None  -> country information unavailable
+            False -> country available but mismatches
+            None  -> country unavailable
         """
 
         if not applicant_country:
@@ -230,9 +236,21 @@ class SanctionsScreener:
         limit: int = 5
     ) -> list:
         """
-        Find strongest OFAC candidates.
+        Generate possible OFAC candidates.
 
-        Both primary names and aliases are checked.
+        Important:
+
+        Weak name matches are ignored.
+
+        This prevents cases such as:
+
+            Rahul Sharma
+            Rakesh Sharma
+
+        from becoming sanctions candidates simply
+        because they share the surname "Sharma".
+
+        Both primary OFAC names and aliases are checked.
         """
 
         candidates = []
@@ -243,14 +261,16 @@ class SanctionsScreener:
             # Primary OFAC name
             # -------------------------------------------------
 
-            best_name = record.get(
+            primary_name = record.get(
                 "name",
                 ""
             )
 
+            best_name = primary_name
+
             best_score = self.compare_name(
                 applicant_name,
-                best_name
+                primary_name
             )
 
             # -------------------------------------------------
@@ -273,7 +293,7 @@ class SanctionsScreener:
                     best_name = alias
 
             # -------------------------------------------------
-            # Ignore weak candidates
+            # Ignore weak matches
             # -------------------------------------------------
 
             if (
@@ -291,7 +311,7 @@ class SanctionsScreener:
             )
 
         # -----------------------------------------------------
-        # Strongest matches first
+        # Strongest candidates first
         # -----------------------------------------------------
 
         candidates.sort(
@@ -312,8 +332,16 @@ class SanctionsScreener:
         candidate: dict
     ) -> dict:
         """
-        Compare applicant attributes against
-        one OFAC candidate.
+        Assess one OFAC candidate using:
+
+        - Name
+        - DOB
+        - Country
+
+        This does NOT declare that a person is sanctioned.
+
+        It only determines whether the candidate should
+        be considered for further review.
         """
 
         record = candidate["record"]
@@ -349,27 +377,31 @@ class SanctionsScreener:
 
         score = name_similarity
 
-        # Matching DOB increases confidence.
+        # Strong supporting evidence:
+        # matching DOB.
         if dob_match is True:
 
             score += 0.05
 
-        # Different DOB strongly reduces confidence.
+        # DOB mismatch is useful evidence against
+        # the candidate.
         elif dob_match is False:
 
             score -= 0.10
 
-        # Matching country slightly increases confidence.
+        # Matching country provides some
+        # additional support.
         if country_match is True:
 
             score += 0.05
 
-        # Different country slightly reduces confidence.
+        # Country mismatch slightly reduces
+        # confidence.
         elif country_match is False:
 
             score -= 0.05
 
-        # Keep score between 0 and 1.
+        # Keep score inside 0-1.
         score = max(
             0.0,
             min(1.0, score)
@@ -381,12 +413,13 @@ class SanctionsScreener:
         )
 
         # -----------------------------------------------------
-        # Candidate assessment
+        # Determine assessment
         # -----------------------------------------------------
 
+        # Very strong name + supporting attribute.
         if (
             name_similarity
-            >= POTENTIAL_MATCH_THRESHOLD
+            >= STRONG_NAME_THRESHOLD
             and (
                 dob_match is True
                 or country_match is True
@@ -397,9 +430,11 @@ class SanctionsScreener:
                 "POTENTIAL_MATCH"
             )
 
+        # Strong name but supporting attributes
+        # are unavailable or inconsistent.
         elif (
             name_similarity
-            >= REVIEW_THRESHOLD
+            >= NAME_CANDIDATE_THRESHOLD
         ):
 
             assessment = "REVIEW"
@@ -407,6 +442,10 @@ class SanctionsScreener:
         else:
 
             assessment = "CLEAR"
+
+        # -----------------------------------------------------
+        # Return candidate result
+        # -----------------------------------------------------
 
         return {
             "ofac_uid": record.get(
@@ -443,7 +482,7 @@ class SanctionsScreener:
         """
         Screen one applicant against the OFAC list.
 
-        Example:
+        Example input:
 
             {
                 "applicant_id": "APP-001",
@@ -485,7 +524,7 @@ class SanctionsScreener:
         )
 
         # -----------------------------------------------------
-        # No candidate
+        # No meaningful candidate
         # -----------------------------------------------------
 
         if not candidates:
@@ -516,7 +555,7 @@ class SanctionsScreener:
             )
 
         # -----------------------------------------------------
-        # Determine overall status
+        # Determine overall screening status
         # -----------------------------------------------------
 
         potential_matches = [
@@ -568,7 +607,7 @@ class SanctionsScreener:
         """
         Normalize common date formats.
 
-        Handles:
+        Examples:
 
             1995-03-12
             12-03-1995
@@ -586,9 +625,7 @@ class SanctionsScreener:
         )
 
         # -----------------------------------------------------
-        # ISO format:
-        #
-        # 1995-03-12
+        # YYYY-MM-DD
         # -----------------------------------------------------
 
         if (
@@ -600,8 +637,6 @@ class SanctionsScreener:
 
         # -----------------------------------------------------
         # DD-MM-YYYY
-        #
-        # 12-03-1995
         # -----------------------------------------------------
 
         if (
@@ -620,8 +655,9 @@ class SanctionsScreener:
             )
 
         # -----------------------------------------------------
-        # OFAC format:
+        # DD Mon YYYY
         #
+        # Example:
         # 26 Dec 1955
         # -----------------------------------------------------
 
@@ -665,7 +701,7 @@ class SanctionsScreener:
                 )
 
         # -----------------------------------------------------
-        # Unknown format
+        # Unknown date format
         # -----------------------------------------------------
 
         return value
