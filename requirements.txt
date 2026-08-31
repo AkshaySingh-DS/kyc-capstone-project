@@ -1,0 +1,6 @@
+paddlepaddle
+paddleocr
+opencv-pythion
+chromadb
+sentence-transfromers
+openai

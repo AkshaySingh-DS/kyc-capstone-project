@@ -1,0 +1,142 @@
+[
+  {
+    "applicant_id": "APP-001",
+    "name": "Rahul Sharma",
+    "dob": "1995-03-12",
+    "address": "123 Example Street, Pune",
+    "scenario": "perfect"
+  },
+  {
+    "applicant_id": "APP-002",
+    "name": "Mohammad Irfan Sheikh",
+    "dob": "1994-08-14",
+    "address": "45 Green Park Road, Pune",
+    "scenario": "perfect"
+  },
+  {
+    "applicant_id": "APP-003",
+    "name": "Priya Verma",
+    "dob": "1992-06-22",
+    "address": "78 Lake View Road, Mumbai",
+    "scenario": "perfect"
+  },
+  {
+    "applicant_id": "APP-004",
+    "name": "Amit Kumar",
+    "dob": "1990-01-10",
+    "address": "22 Sunrise Avenue, Delhi",
+    "scenario": "name_variation"
+  },
+  {
+    "applicant_id": "APP-005",
+    "name": "Neha Singh",
+    "dob": "1996-11-05",
+    "address": "14 Rose Garden Road, Jaipur",
+    "scenario": "name_variation"
+  },
+  {
+    "applicant_id": "APP-006",
+    "name": "Arjun Mehta",
+    "dob": "1988-09-18",
+    "address": "56 River Road, Bengaluru",
+    "scenario": "dob_mismatch"
+  },
+  {
+    "applicant_id": "APP-007",
+    "name": "Sara Khan",
+    "dob": "1993-04-27",
+    "address": "91 Park Street, Hyderabad",
+    "scenario": "dob_mismatch"
+  },
+  {
+    "applicant_id": "APP-008",
+    "name": "Vikram Patel",
+    "dob": "1987-12-30",
+    "address": "33 Central Road, Ahmedabad",
+    "scenario": "address_mismatch"
+  },
+  {
+    "applicant_id": "APP-009",
+    "name": "Riya Gupta",
+    "dob": "1995-02-15",
+    "address": "19 Garden Lane, Lucknow",
+    "scenario": "address_mismatch"
+  },
+  {
+    "applicant_id": "APP-010",
+    "name": "Karan Malhotra",
+    "dob": "1991-07-21",
+    "address": "42 Model Town, Chandigarh",
+    "scenario": "missing_document"
+  },
+  {
+    "applicant_id": "APP-011",
+    "name": "Ananya Rao",
+    "dob": "1994-05-16",
+    "address": "17 Tech Park Road, Bengaluru",
+    "scenario": "missing_document"
+  },
+  {
+    "applicant_id": "APP-012",
+    "name": "Rohit Verma",
+    "dob": "1989-10-09",
+    "address": "65 Station Road, Kanpur",
+    "scenario": "expired_document"
+  },
+  {
+    "applicant_id": "APP-013",
+    "name": "Meera Joshi",
+    "dob": "1993-08-11",
+    "address": "28 Temple Road, Nashik",
+    "scenario": "poor_quality_document"
+  },
+  {
+    "applicant_id": "APP-014",
+    "name": "Sanjay Kapoor",
+    "dob": "1986-03-25",
+    "address": "74 Hill Road, Shimla",
+    "scenario": "poor_quality_document"
+  },
+  {
+    "applicant_id": "APP-015",
+    "name": "Pooja Nair",
+    "dob": "1997-01-19",
+    "address": "11 Beach Road, Kochi",
+    "scenario": "photo_mismatch"
+  },
+  {
+    "applicant_id": "APP-016",
+    "name": "Dev Agarwal",
+    "dob": "1990-06-30",
+    "address": "88 Market Road, Indore",
+    "scenario": "document_tampering"
+  },
+  {
+    "applicant_id": "APP-017",
+    "name": "John Example",
+    "dob": "1980-04-10",
+    "address": "100 Example Road, Mumbai",
+    "scenario": "ofac_name_only"
+  },
+  {
+    "applicant_id": "APP-018",
+    "name": "Example Sanctioned Person",
+    "dob": "1980-04-10",
+    "address": "200 Example Avenue, Mumbai",
+    "scenario": "ofac_potential_match"
+  },
+  {
+    "applicant_id": "APP-019",
+    "name": "Riya Gupta",
+    "dob": "1995-02-15",
+    "address": "19 Garden Lane, Lucknow",
+    "scenario": "multiple_name_variations"
+  },
+  {
+    "applicant_id": "APP-020",
+    "name": "Vivek Sharma",
+    "dob": "1985-11-08",
+    "address": "52 Main Street, Delhi",
+    "scenario": "multiple_issues"
+  }
+]
