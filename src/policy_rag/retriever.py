@@ -59,7 +59,7 @@ class RBIPolicyRetriever:
             name=COLLECTION_NAME
         )
 
-    def search(self, question: str, top_k: int = 3):
+    def search(self, question: str, top_k: int = 5):
         """
         Search the RBI policy collection using
         WatsonX embeddings.
