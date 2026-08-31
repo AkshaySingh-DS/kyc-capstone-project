@@ -1,6 +1,6 @@
 from rapidfuzz import fuzz
 
-from normalizer import (
+from .normalizer import (
     normalize_name,
     normalize_address,
     normalize_dob,
