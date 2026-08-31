@@ -18,18 +18,44 @@ ADDRESS_WEIGHT = 0.30
 MATCH_THRESHOLD = 0.90
 REVIEW_THRESHOLD = 0.75
 
+# Minimum individual field thresholds
+NAME_MATCH_THRESHOLD = 0.85
+ADDRESS_MATCH_THRESHOLD = 0.75
+
 
 # ---------------------------------------------------------
 # Identity Verifier
 # ---------------------------------------------------------
 
 class IdentityVerifier:
+    """
+    Deterministic KYC identity verification.
 
-    def compare_name(self, expected: str, actual: str) -> float:
+    Python is used for:
+    - Name normalization
+    - DOB normalization
+    - Address normalization
+    - Fuzzy matching
+    - Confidence calculation
+    - Final decision
+
+    No LLM is used here.
+    """
+
+    # =========================================================
+    # NAME COMPARISON
+    # =========================================================
+
+    def compare_name(
+        self,
+        expected: str,
+        actual: str
+    ) -> float:
         """
         Compare two names using fuzzy matching.
 
-        Returns a similarity score between 0 and 1.
+        Returns:
+            Similarity score between 0 and 1.
         """
 
         expected = normalize_name(expected)
@@ -45,6 +71,10 @@ class IdentityVerifier:
 
         return round(score / 100, 2)
 
+    # =========================================================
+    # ADDRESS COMPARISON
+    # =========================================================
+
     def compare_address(
         self,
         expected: str,
@@ -53,7 +83,8 @@ class IdentityVerifier:
         """
         Compare two addresses using fuzzy matching.
 
-        Returns a similarity score between 0 and 1.
+        Returns:
+            Similarity score between 0 and 1.
         """
 
         expected = normalize_address(expected)
@@ -68,6 +99,10 @@ class IdentityVerifier:
         )
 
         return round(score / 100, 2)
+
+    # =========================================================
+    # DOB COMPARISON
+    # =========================================================
 
     def compare_dob(
         self,
@@ -86,6 +121,10 @@ class IdentityVerifier:
 
         return expected == actual
 
+    # =========================================================
+    # MAIN VERIFICATION
+    # =========================================================
+
     def verify(
         self,
         expected: dict,
@@ -95,15 +134,15 @@ class IdentityVerifier:
         Perform deterministic identity verification.
 
         expected:
-            Expected applicant profile from applicants.json.
+            Expected applicant profile.
 
         actual:
-            Fields extracted from the submitted document.
+            Fields extracted from submitted documents.
         """
 
-        # -------------------------------------------------
+        # -----------------------------------------------------
         # Compare individual fields
-        # -------------------------------------------------
+        # -----------------------------------------------------
 
         name_similarity = self.compare_name(
             expected.get("name"),
@@ -120,12 +159,15 @@ class IdentityVerifier:
             actual.get("address")
         )
 
+        # -----------------------------------------------------
         # Convert DOB result to numeric score
+        # -----------------------------------------------------
+
         dob_score = 1.0 if dob_match else 0.0
 
-        # -------------------------------------------------
+        # -----------------------------------------------------
         # Calculate overall confidence
-        # -------------------------------------------------
+        # -----------------------------------------------------
 
         identity_confidence = (
             name_similarity * NAME_WEIGHT
@@ -138,26 +180,20 @@ class IdentityVerifier:
             2
         )
 
-        # -------------------------------------------------
+        # -----------------------------------------------------
         # Determine final status
-        # -------------------------------------------------
+        # -----------------------------------------------------
 
-        if (
-            identity_confidence >= MATCH_THRESHOLD
-            and dob_match
-            and name_similarity >= 0.85
-        ):
-            status = "MATCH"
+        status = self._determine_status(
+            name_similarity=name_similarity,
+            dob_match=dob_match,
+            address_similarity=address_similarity,
+            identity_confidence=identity_confidence,
+        )
 
-        elif identity_confidence >= REVIEW_THRESHOLD:
-            status = "REVIEW"
-
-        else:
-            status = "MISMATCH"
-
-        # -------------------------------------------------
+        # -----------------------------------------------------
         # Return verification result
-        # -------------------------------------------------
+        # -----------------------------------------------------
 
         return {
             "applicant_id": expected.get("applicant_id"),
@@ -167,3 +203,75 @@ class IdentityVerifier:
             "identity_confidence": identity_confidence,
             "status": status,
         }
+
+    # =========================================================
+    # DECISION LOGIC
+    # =========================================================
+
+    @staticmethod
+    def _determine_status(
+        name_similarity: float,
+        dob_match: bool,
+        address_similarity: float,
+        identity_confidence: float,
+    ) -> str:
+        """
+        Determine final identity verification status.
+
+        MATCH:
+            Strong agreement across identity attributes.
+
+        REVIEW:
+            Some discrepancy exists and should be
+            manually reviewed.
+
+        MISMATCH:
+            Critical identity information conflicts.
+        """
+
+        # -----------------------------------------------------
+        # DOB mismatch is treated as a critical conflict.
+        # -----------------------------------------------------
+
+        if not dob_match:
+            return "MISMATCH"
+
+        # -----------------------------------------------------
+        # Significant name mismatch is treated as a
+        # critical identity conflict.
+        # -----------------------------------------------------
+
+        if name_similarity < NAME_MATCH_THRESHOLD:
+            return "MISMATCH"
+
+        # -----------------------------------------------------
+        # Address discrepancy should not automatically
+        # reject the applicant because addresses can change
+        # or have formatting/OCR differences.
+        #
+        # Send it for manual review.
+        # -----------------------------------------------------
+
+        if address_similarity < ADDRESS_MATCH_THRESHOLD:
+            return "REVIEW"
+
+        # -----------------------------------------------------
+        # Strong match
+        # -----------------------------------------------------
+
+        if identity_confidence >= MATCH_THRESHOLD:
+            return "MATCH"
+
+        # -----------------------------------------------------
+        # Moderate confidence
+        # -----------------------------------------------------
+
+        if identity_confidence >= REVIEW_THRESHOLD:
+            return "REVIEW"
+
+        # -----------------------------------------------------
+        # Low confidence
+        # -----------------------------------------------------
+
+        return "MISMATCH"
+
