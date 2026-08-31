@@ -1,8 +1,6 @@
 paddlepaddle
 paddleocr
 opencv-python
-sentence-transformers
-openai
 langchain-openai
 chromadb==0.6.3
 langchain==0.3.16
@@ -12,3 +10,4 @@ langchain-ibm==0.3.5
 langchain-text-splitters==0.3.5
 ibm_watsonx_ai==1.2.4
 numpy==1.26.4
+rapidfuzz
