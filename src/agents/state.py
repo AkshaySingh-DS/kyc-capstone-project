@@ -110,3 +110,6 @@ class KYCState(TypedDict, total=False):
 
     # Optional error information.
     error: Optional[str]
+
+    # Prevent infinite sanctions review loop
+    sanctions_review_attempted: bool

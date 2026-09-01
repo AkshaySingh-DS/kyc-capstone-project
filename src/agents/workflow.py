@@ -23,9 +23,9 @@ from src.agents.decision_agent import (
 )
 
 
-# =========================================================
-# Create Agents
-# =========================================================
+# ============================================================
+# CREATE AGENTS
+# ============================================================
 
 document_agent = DocumentVerificationAgent()
 identity_agent = IdentityVerificationAgent()
@@ -34,98 +34,69 @@ policy_agent = PolicyAgent()
 decision_agent = DecisionAgent()
 
 
-# =========================================================
-# DOCUMENT AGENT
-# =========================================================
+# ============================================================
+# DOCUMENT AGENT NODE
+# ============================================================
 
 def document_node(state: KYCState):
-
     result = document_agent.run(state)
 
-    document_result = result.get(
-        "document_result",
-        {}
-    )
+    document_result = result.get("document_result", {})
 
-    # -----------------------------------------------------
-    # If required documents are missing, create an early
-    # workflow result.
-    #
-    # Decision Agent is NOT called in this case.
-    # -----------------------------------------------------
-
+    # If documents are incomplete, create an early
+    # MORE_DOCUMENTS result so the final output is not empty.
     if document_result.get("status") == "INCOMPLETE":
 
-        missing_documents = document_result.get(
-            "missing_documents",
-            []
-        )
-
-        documents_found = document_result.get(
-            "documents_found",
-            []
-        )
-
-        early_decision = {
+        decision_result = {
             "applicant_id": state["applicant_id"],
             "decision": "MORE_DOCUMENTS",
             "confidence": "HIGH",
             "reasons": [
                 "Required KYC documents are missing.",
-                "The application cannot proceed to identity verification until all required documents are available."
+                (
+                    "The application cannot proceed to identity "
+                    "verification until all required documents are available."
+                ),
             ],
-            "documents_found": documents_found,
-            "missing_documents": missing_documents,
+            "missing_documents": document_result.get(
+                "missing_documents", []
+            ),
+            "documents_found": document_result.get(
+                "documents_found", []
+            ),
             "next_action": "END",
         }
 
         return {
             "document_result": document_result,
-            "decision_result": early_decision,
+            "decision_result": decision_result,
             "next_action": "MORE_DOCUMENTS",
-            "messages": result.get(
-                "messages",
-                []
-            ),
+            "messages": result.get("messages", []),
         }
-
-    # -----------------------------------------------------
-    # Documents are complete
-    # -----------------------------------------------------
 
     return {
         "document_result": document_result,
-        "next_action": result.get(
-            "next_action"
-        ),
-        "messages": result.get(
-            "messages",
-            []
-        ),
+        "next_action": result.get("next_action"),
+        "messages": result.get("messages", []),
     }
 
 
-# =========================================================
-# DOCUMENT ROUTER
-# =========================================================
+# ============================================================
+# ROUTE AFTER DOCUMENT AGENT
+# ============================================================
 
 def route_after_document(state: KYCState):
-
-    document_result = state.get(
-        "document_result",
-        {}
-    )
+    document_result = state.get("document_result", {})
 
     if document_result.get("status") == "INCOMPLETE":
-
         return "end"
 
     return "identity"
 
 
-# =========================================================
-# IDENTITY AGENT
-# =========================================================
+# ============================================================
+# IDENTITY AGENT NODE
+# ============================================================
 
 def identity_node(state: KYCState):
 
@@ -133,151 +104,144 @@ def identity_node(state: KYCState):
         applicant_id=state["applicant_id"],
         expected_profile=state["expected_profile"],
         document_result=state["document_result"],
-        photo_paths=state.get(
-            "photo_paths",
-            {}
-        ),
+        photo_paths=state.get("photo_paths", {}),
     )
 
     return {
         "identity_result": result.get(
-            "identity_result",
-            {}
+            "identity_result", {}
         ),
-        "next_action": result.get(
-            "next_action"
-        ),
+        "next_action": result.get("next_action"),
         "messages": [
-            result.get(
-                "message",
-                ""
-            )
+            result.get("message", "")
         ],
     }
 
 
-# =========================================================
-# SANCTIONS AGENT
-# =========================================================
+# ============================================================
+# SANCTIONS AGENT NODE
+# ============================================================
 
 def sanctions_node(state: KYCState):
 
     result = sanctions_agent.run(
         applicant_id=state["applicant_id"],
         identity_result=state.get(
-            "identity_result",
-            {}
+            "identity_result", {}
         ),
     )
 
     return {
         "sanctions_result": result.get(
-            "sanctions_result",
-            {}
+            "sanctions_result", {}
         ),
-        "next_action": result.get(
-            "next_action"
-        ),
+        "next_action": result.get("next_action"),
         "messages": [
-            result.get(
-                "message",
-                ""
+            result.get("message", "")
+        ],
+    }
+
+
+# ============================================================
+# SANCTIONS REVIEW NODE
+#
+# This node is NOT another agent.
+# It simply marks that the one-time feedback loop
+# has been requested.
+# ============================================================
+
+def sanctions_review_node(state: KYCState):
+
+    applicant_id = state["applicant_id"]
+
+    return {
+        "sanctions_review_attempted": True,
+        "messages": [
+            (
+                f"Workflow: requesting additional sanctions "
+                f"evidence for {applicant_id}."
             )
         ],
     }
 
 
-# =========================================================
-# POLICY AGENT
-# =========================================================
+# ============================================================
+# POLICY AGENT NODE
+# ============================================================
 
 def policy_node(state: KYCState):
 
     result = policy_agent.run(
         applicant_id=state["applicant_id"],
         document_result=state.get(
-            "document_result",
-            {}
+            "document_result", {}
         ),
         identity_result=state.get(
-            "identity_result",
-            {}
+            "identity_result", {}
         ),
         sanctions_result=state.get(
-            "sanctions_result",
-            {}
+            "sanctions_result", {}
         ),
     )
 
     return {
         "policy_result": result.get(
-            "policy_result",
-            {}
+            "policy_result", {}
         ),
-        "next_action": result.get(
-            "next_action"
-        ),
+        "next_action": result.get("next_action"),
         "messages": [
-            result.get(
-                "message",
-                ""
-            )
+            result.get("message", "")
         ],
     }
 
 
-# =========================================================
-# DECISION AGENT
-# =========================================================
+# ============================================================
+# DECISION AGENT NODE
+# ============================================================
 
 def decision_node(state: KYCState):
 
     result = decision_agent.run(
         applicant_id=state["applicant_id"],
         document_result=state.get(
-            "document_result",
-            {}
+            "document_result", {}
         ),
         identity_result=state.get(
-            "identity_result",
-            {}
+            "identity_result", {}
         ),
         sanctions_result=state.get(
-            "sanctions_result",
-            {}
+            "sanctions_result", {}
         ),
         policy_result=state.get(
-            "policy_result",
-            {}
+            "policy_result", {}
         ),
     )
 
     return {
         "decision_result": result.get(
-            "decision_result",
-            {}
+            "decision_result", {}
         ),
-        "next_action": result.get(
-            "next_action"
-        ),
+        "next_action": result.get("next_action"),
         "messages": [
-            result.get(
-                "message",
-                ""
-            )
+            result.get("message", "")
         ],
     }
 
 
-# =========================================================
-# DECISION ROUTER
-# =========================================================
+# ============================================================
+# ROUTE AFTER DECISION AGENT
+#
+# REVIEW + LOW confidence can trigger ONE
+# sanctions re-check.
+#
+# After the re-check, the workflow MUST END.
+# This prevents an infinite LangGraph loop.
+# ============================================================
 
 def route_after_decision(state: KYCState):
 
     decision_result = state.get(
-        "decision_result",
-        {}
+        "decision_result", {}
     )
 
     decision = decision_result.get(
@@ -288,50 +252,43 @@ def route_after_decision(state: KYCState):
         "confidence"
     )
 
-    # -----------------------------------------------------
-    # Final decisions
-    # -----------------------------------------------------
+    review_attempted = state.get(
+        "sanctions_review_attempted",
+        False
+    )
 
+    # Final decisions
     if decision in (
         "APPROVE",
-        "REJECT"
+        "REJECT",
+        "MORE_DOCUMENTS",
     ):
-
         return "end"
 
-    # -----------------------------------------------------
-    # REVIEW + LOW confidence
-    #
-    # Ask Sanctions Agent for additional evidence.
-    # -----------------------------------------------------
-
+    # One-time low-confidence feedback loop
     if (
         decision == "REVIEW"
         and confidence == "LOW"
+        and not review_attempted
     ):
-
         return "sanctions_review"
 
-    # -----------------------------------------------------
-    # REVIEW but confidence is not LOW.
-    #
-    # For this simple college demo we finish with REVIEW.
-    # -----------------------------------------------------
-
+    # If review has already been attempted,
+    # stop the workflow.
     return "end"
 
 
-# =========================================================
-# BUILD LANGGRAPH
-# =========================================================
+# ============================================================
+# BUILD LANGGRAPH WORKFLOW
+# ============================================================
 
 def build_workflow():
 
     workflow = StateGraph(KYCState)
 
-    # -----------------------------------------------------
+    # --------------------------------------------------------
     # Add nodes
-    # -----------------------------------------------------
+    # --------------------------------------------------------
 
     workflow.add_node(
         "document_agent",
@@ -349,6 +306,11 @@ def build_workflow():
     )
 
     workflow.add_node(
+        "sanctions_review",
+        sanctions_review_node
+    )
+
+    workflow.add_node(
         "policy_agent",
         policy_node
     )
@@ -358,18 +320,18 @@ def build_workflow():
         decision_node
     )
 
-    # -----------------------------------------------------
-    # START → DOCUMENT
-    # -----------------------------------------------------
+    # --------------------------------------------------------
+    # Start → Document Agent
+    # --------------------------------------------------------
 
     workflow.add_edge(
         START,
         "document_agent"
     )
 
-    # -----------------------------------------------------
-    # DOCUMENT → IDENTITY or END
-    # -----------------------------------------------------
+    # --------------------------------------------------------
+    # Document Agent routing
+    # --------------------------------------------------------
 
     workflow.add_conditional_edges(
         "document_agent",
@@ -377,65 +339,71 @@ def build_workflow():
         {
             "identity": "identity_agent",
             "end": END,
-        }
+        },
     )
 
-    # -----------------------------------------------------
-    # IDENTITY → SANCTIONS
-    # -----------------------------------------------------
+    # --------------------------------------------------------
+    # Normal workflow
+    # --------------------------------------------------------
 
     workflow.add_edge(
         "identity_agent",
         "sanctions_agent"
     )
 
-    # -----------------------------------------------------
-    # SANCTIONS → POLICY
-    # -----------------------------------------------------
-
     workflow.add_edge(
         "sanctions_agent",
         "policy_agent"
     )
-
-    # -----------------------------------------------------
-    # POLICY → DECISION
-    # -----------------------------------------------------
 
     workflow.add_edge(
         "policy_agent",
         "decision_agent"
     )
 
-    # -----------------------------------------------------
-    # DECISION ROUTING
-    # -----------------------------------------------------
+    # --------------------------------------------------------
+    # Decision Agent routing
+    #
+    # REVIEW + LOW → one-time sanctions review
+    # --------------------------------------------------------
 
     workflow.add_conditional_edges(
         "decision_agent",
         route_after_decision,
         {
             "end": END,
-
-            # Low-confidence REVIEW
-            # goes back to Sanctions Agent.
-            "sanctions_review": "sanctions_agent",
-        }
+            "sanctions_review": "sanctions_review",
+        },
     )
+
+    # --------------------------------------------------------
+    # Feedback loop
+    #
+    # sanctions_review → sanctions_agent
+    # --------------------------------------------------------
+
+    workflow.add_edge(
+        "sanctions_review",
+        "sanctions_agent"
+    )
+
+    # --------------------------------------------------------
+    # Compile
+    # --------------------------------------------------------
 
     return workflow.compile()
 
 
-# =========================================================
-# Create compiled workflow
-# =========================================================
+# ============================================================
+# CREATE WORKFLOW
+# ============================================================
 
 kyc_workflow = build_workflow()
 
 
-# =========================================================
-# Simple Test
-# =========================================================
+# ============================================================
+# MAIN PROGRAM
+# ============================================================
 
 if __name__ == "__main__":
 
@@ -445,21 +413,21 @@ if __name__ == "__main__":
     print("KYC MULTI-AGENT WORKFLOW")
     print("========================================\n")
 
+    # --------------------------------------------------------
+    # Ask for applicant ID
+    # --------------------------------------------------------
+
     applicant_id = input(
         "Enter applicant ID (e.g. APP-001): "
     ).strip().upper()
 
     if not applicant_id:
-
-        print(
-            "Applicant ID cannot be empty."
-        )
-
+        print("Applicant ID cannot be empty.")
         raise SystemExit(1)
 
-    # -----------------------------------------------------
-    # Load applicant profile
-    # -----------------------------------------------------
+    # --------------------------------------------------------
+    # Load applicant profiles
+    # --------------------------------------------------------
 
     applicants_file = (
         "synthetic_documents/applicants.json"
@@ -484,41 +452,38 @@ if __name__ == "__main__":
 
         raise SystemExit(1)
 
-    # -----------------------------------------------------
+    # --------------------------------------------------------
     # Find applicant
-    # -----------------------------------------------------
+    # --------------------------------------------------------
 
     expected_profile = next(
         (
             applicant
             for applicant in applicants
-            if applicant.get(
-                "applicant_id"
-            ) == applicant_id
+            if applicant.get("applicant_id")
+            == applicant_id
         ),
-        None
+        None,
     )
 
     if expected_profile is None:
 
         print(
             f"Applicant '{applicant_id}' "
-            "was not found."
+            f"was not found."
         )
 
         raise SystemExit(1)
 
-    # -----------------------------------------------------
-    # Initial workflow state
-    # -----------------------------------------------------
+    # --------------------------------------------------------
+    # Initial LangGraph state
+    # --------------------------------------------------------
 
     initial_state = {
 
-        "applicant_id":
-            applicant_id,
+        "applicant_id": applicant_id,
 
-        "expected_profile":
-            expected_profile,
+        "expected_profile": expected_profile,
 
         "document_paths": {},
 
@@ -539,11 +504,15 @@ if __name__ == "__main__":
         "messages": [],
 
         "error": None,
+
+        # Important:
+        # Allows only ONE sanctions feedback loop.
+        "sanctions_review_attempted": False,
     }
 
-    # -----------------------------------------------------
-    # Run workflow
-    # -----------------------------------------------------
+    # --------------------------------------------------------
+    # Execute workflow
+    # --------------------------------------------------------
 
     try:
 
@@ -553,29 +522,18 @@ if __name__ == "__main__":
 
     except Exception as e:
 
-        print(
-            "\nWorkflow execution failed:"
-        )
-
+        print("\nWorkflow execution failed:")
         print(str(e))
 
         raise SystemExit(1)
 
-    # -----------------------------------------------------
+    # --------------------------------------------------------
     # Display final result
-    # -----------------------------------------------------
+    # --------------------------------------------------------
 
-    print(
-        "\n========================================"
-    )
-
-    print(
-        "FINAL KYC RESULT"
-    )
-
-    print(
-        "========================================\n"
-    )
+    print("\n========================================")
+    print("FINAL KYC RESULT")
+    print("========================================\n")
 
     decision_result = final_state.get(
         "decision_result",
@@ -590,14 +548,15 @@ if __name__ == "__main__":
         )
     )
 
-    print(
-        "\n========================================"
-    )
+    # --------------------------------------------------------
+    # Display workflow information
+    # --------------------------------------------------------
+
+    print("\n========================================")
+    print("WORKFLOW COMPLETED")
+    print("========================================")
 
     print(
-        "WORKFLOW COMPLETED"
-    )
-
-    print(
-        "========================================"
+        f"\nSanctions review attempted: "
+        f"{final_state.get('sanctions_review_attempted', False)}"
     )
