@@ -118,11 +118,11 @@
     "address": "100 Example Road, Mumbai",
     "scenario": "ofac_name_only"
   },
-  {
+   {
     "applicant_id": "APP-018",
-    "name": "Example Sanctioned Person",
-    "dob": "1980-04-10",
-    "address": "200 Example Avenue, Mumbai",
+    "name": "Hacene Allane",
+    "dob": "1942-01-17",
+    "address": "Algiers, Algeria",
     "scenario": "ofac_potential_match"
   },
   {
