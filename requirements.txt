@@ -11,3 +11,4 @@ langchain-text-splitters==0.3.5
 ibm_watsonx_ai==1.2.4
 numpy==1.26.4
 rapidfuzz
+langgraph
