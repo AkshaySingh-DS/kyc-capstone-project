@@ -42,11 +42,59 @@ def document_node(state: KYCState):
 
     result = document_agent.run(state)
 
+    document_result = result.get(
+        "document_result",
+        {}
+    )
+
+    # -----------------------------------------------------
+    # If required documents are missing, create an early
+    # workflow result.
+    #
+    # Decision Agent is NOT called in this case.
+    # -----------------------------------------------------
+
+    if document_result.get("status") == "INCOMPLETE":
+
+        missing_documents = document_result.get(
+            "missing_documents",
+            []
+        )
+
+        documents_found = document_result.get(
+            "documents_found",
+            []
+        )
+
+        early_decision = {
+            "applicant_id": state["applicant_id"],
+            "decision": "MORE_DOCUMENTS",
+            "confidence": "HIGH",
+            "reasons": [
+                "Required KYC documents are missing.",
+                "The application cannot proceed to identity verification until all required documents are available."
+            ],
+            "documents_found": documents_found,
+            "missing_documents": missing_documents,
+            "next_action": "END",
+        }
+
+        return {
+            "document_result": document_result,
+            "decision_result": early_decision,
+            "next_action": "MORE_DOCUMENTS",
+            "messages": result.get(
+                "messages",
+                []
+            ),
+        }
+
+    # -----------------------------------------------------
+    # Documents are complete
+    # -----------------------------------------------------
+
     return {
-        "document_result": result.get(
-            "document_result",
-            {}
-        ),
+        "document_result": document_result,
         "next_action": result.get(
             "next_action"
         ),
