@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Dict, Optional
+import json
 
 from src.identity.identity_verifier import IdentityVerifier
 from src.multimodal.face_verifier import FaceVerifier
@@ -161,9 +162,12 @@ class IdentityVerificationAgent:
         if document_result.get("status") != "COMPLETE":
 
             return {
-                "status": "INCOMPLETE",
-                "identity_verification": {},
-                "face_verification": {},
+                "identity_result": {
+                    "applicant_id": applicant_id,
+                    "status": "INCOMPLETE",
+                    "identity_verification": {},
+                    "face_verification": {},
+                },
                 "next_action": "MORE_DOCUMENTS",
                 "message": (
                     "Identity Agent: required documents "
@@ -183,9 +187,12 @@ class IdentityVerificationAgent:
         if not ocr_results:
 
             return {
-                "status": "ANALYSIS_UNCERTAIN",
-                "identity_verification": {},
-                "face_verification": {},
+                "identity_result": {
+                    "applicant_id": applicant_id,
+                    "status": "ANALYSIS_UNCERTAIN",
+                    "identity_verification": {},
+                    "face_verification": {},
+                },
                 "next_action": "SANCTIONS",
                 "message": (
                     "Identity Agent: OCR results unavailable."
@@ -202,7 +209,10 @@ class IdentityVerificationAgent:
             )
         )
 
-        # Make sure applicant ID is available.
+        # -------------------------------------------------
+        # 4. Make sure applicant ID is available
+        # -------------------------------------------------
+
         if not expected_profile.get("applicant_id"):
 
             expected_profile = {
@@ -211,7 +221,7 @@ class IdentityVerificationAgent:
             }
 
         # -------------------------------------------------
-        # 4. Run deterministic identity verification
+        # 5. Run deterministic identity verification
         # -------------------------------------------------
 
         try:
@@ -234,7 +244,7 @@ class IdentityVerificationAgent:
             }
 
         # -------------------------------------------------
-        # 5. Face verification
+        # 6. Face verification
         # -------------------------------------------------
 
         face_verification = {}
@@ -292,7 +302,7 @@ class IdentityVerificationAgent:
                     }
 
         # -------------------------------------------------
-        # 6. Determine identity agent status
+        # 7. Determine identity agent status
         # -------------------------------------------------
 
         identity_status = identity_verification.get(
@@ -326,9 +336,11 @@ class IdentityVerificationAgent:
 
             overall_status = "ANALYSIS_UNCERTAIN"
 
-        # A face mismatch/review should be visible in the
-        # identity result, but final disposition is handled
-        # later by Decision Agent.
+        # -------------------------------------------------
+        # Face verification can influence the evidence
+        # status, but final KYC disposition is handled by
+        # the Decision Agent.
+        # -------------------------------------------------
 
         if face_status == "REVIEW":
 
@@ -340,7 +352,7 @@ class IdentityVerificationAgent:
                 overall_status = "ANALYSIS_UNCERTAIN"
 
         # -------------------------------------------------
-        # 7. Build final agent result
+        # 8. Build final identity result
         # -------------------------------------------------
 
         result = {
@@ -350,6 +362,10 @@ class IdentityVerificationAgent:
             "face_verification": face_verification,
             "actual_identity": actual_identity,
         }
+
+        # -------------------------------------------------
+        # 9. Return agent output
+        # -------------------------------------------------
 
         return {
             "identity_result": result,
@@ -371,77 +387,233 @@ if __name__ == "__main__":
 
     agent = IdentityVerificationAgent()
 
-    applicant_id = "APP-001"
+    # -----------------------------------------------------
+    # Select applicant dynamically
+    # -----------------------------------------------------
 
-    # Expected identity profile.
-    expected_profile = {
-        "applicant_id": "APP-001",
-        "name": "Rahul Sharma",
-        "dob": "12-03-1995",
-        "address": (
-            "123 Example Street, Pune, 411001"
+    applicant_id = input(
+        "Enter applicant ID (e.g. APP-001): "
+    ).strip().upper()
+
+    if not applicant_id:
+
+        print("Applicant ID cannot be empty.")
+        raise SystemExit(1)
+
+    # -----------------------------------------------------
+    # Load applicant profile
+    # -----------------------------------------------------
+
+    applicants_file = (
+        "synthetic_documents/applicants.json"
+    )
+
+    try:
+
+        with open(
+            applicants_file,
+            "r",
+            encoding="utf-8"
+        ) as file:
+
+            applicants = json.load(file)
+
+    except FileNotFoundError:
+
+        print(
+            f"\nApplicant file not found: "
+            f"{applicants_file}"
+        )
+
+        raise SystemExit(1)
+
+    # -----------------------------------------------------
+    # Find selected applicant
+    # -----------------------------------------------------
+
+    expected_profile = next(
+        (
+            applicant
+            for applicant in applicants
+            if applicant.get("applicant_id") == applicant_id
         ),
-    }
+        None
+    )
 
-    # Minimal document-agent-style input.
+    if expected_profile is None:
+
+        print(
+            f"\nApplicant '{applicant_id}' "
+            "was not found in applicants.json."
+        )
+
+        raise SystemExit(1)
+
+    # -----------------------------------------------------
+    # Run Document Agent
     #
-    # In the actual LangGraph workflow this will come
-    # directly from Document Verification Agent.
-    document_result = {
-        "status": "COMPLETE",
-        "ocr_results": {
-            "aadhar": {
-                "fields": {
-                    "name": "RAHUL SHARMA",
-                    "dob": "12-03-1995",
-                    "address": (
-                        "123 Example Street, Pune, 411001"
-                    ),
-                    "applicant_id": "APP-001",
-                }
-            },
-            "pan": {
-                "fields": {
-                    "name": "Rahul Sharma",
-                    "dob": "12-03-1995",
-                    "applicant_id": "APP-001",
-                }
-            },
-            "address_proof": {
-                "fields": {
-                    "name": "Rahul Sharma",
-                    "address": (
-                        "123 Example Street, Pune, 411001, India"
-                    ),
-                    "applicant_id": "APP-001",
-                }
-            },
-        },
-    }
+    # IMPORTANT:
+    #
+    # DocumentVerificationAgent.run() expects a KYC state,
+    # not applicant_id/document_directory/document_files
+    # as separate keyword arguments.
+    # -----------------------------------------------------
+
+    try:
+
+        from .document_agent import (
+            DocumentVerificationAgent
+        )
+
+        document_agent = (
+            DocumentVerificationAgent()
+        )
+
+        document_state = {
+            "applicant_id": applicant_id,
+            "document_paths": {},
+            "photo_paths": {},
+        }
+
+        document_agent_output = (
+            document_agent.run(document_state)
+        )
+
+    except Exception as e:
+
+        print(
+            "\nDocument Agent execution failed:"
+        )
+
+        print(str(e))
+
+        raise SystemExit(1)
+
+    # -----------------------------------------------------
+    # Extract actual document_result
+    #
+    # Document Agent returns:
+    #
+    # {
+    #     "document_result": {...},
+    #     "next_action": "...",
+    #     "messages": [...]
+    # }
+    # -----------------------------------------------------
+
+    document_result = (
+        document_agent_output.get(
+            "document_result",
+            {}
+        )
+    )
+
+    # -----------------------------------------------------
+    # Display Document Agent status
+    # -----------------------------------------------------
+
+    print("\n===== DOCUMENT AGENT STATUS =====\n")
+
+    print(
+        f"Status: "
+        f"{document_result.get('status')}"
+    )
+
+    print(
+        f"Next Action: "
+        f"{document_agent_output.get('next_action')}"
+    )
+
+    # -----------------------------------------------------
+    # Stop if documents are incomplete
+    # -----------------------------------------------------
+
+    if document_result.get("status") != "COMPLETE":
+
+        print(
+            "\nDocument verification is incomplete."
+        )
+
+        print(
+            "Missing documents:"
+        )
+
+        for document in document_result.get(
+            "missing_documents",
+            []
+        ):
+
+            print(f"  - {document}")
+
+        raise SystemExit(0)
+
+    # -----------------------------------------------------
+    # Build photo paths dynamically
+    # -----------------------------------------------------
+
+    photo_directory = (
+        f"synthetic_photos/{applicant_id}"
+    )
 
     photo_paths = {
         "id_photo": (
-            "synthetic_photos/"
-            "APP-021/"
-            "id_photo.png"
+            f"{photo_directory}/id_photo.png"
         ),
         "selfie": (
-            "synthetic_photos/"
-            "APP-021/"
-            "selfie.png"
+            f"{photo_directory}/selfie.png"
         ),
     }
 
-    result = agent.run(
-        applicant_id=applicant_id,
-        expected_profile=expected_profile,
-        document_result=document_result,
-        photo_paths=photo_paths,
+    # -----------------------------------------------------
+    # Check photo files
+    # -----------------------------------------------------
+
+    missing_photos = [
+        path
+        for path in photo_paths.values()
+        if not Path(path).exists()
+    ]
+
+    if missing_photos:
+
+        print("\nMissing photo files:")
+
+        for path in missing_photos:
+
+            print(f"  - {path}")
+
+        raise SystemExit(1)
+
+    # -----------------------------------------------------
+    # Run Identity Agent
+    # -----------------------------------------------------
+
+    try:
+
+        result = agent.run(
+            applicant_id=applicant_id,
+            expected_profile=expected_profile,
+            document_result=document_result,
+            photo_paths=photo_paths,
+        )
+
+    except Exception as e:
+
+        print(
+            "\nIdentity Agent execution failed:"
+        )
+
+        print(str(e))
+
+        raise SystemExit(1)
+
+    # -----------------------------------------------------
+    # Display result
+    # -----------------------------------------------------
+
+    print(
+        "\n===== IDENTITY AGENT RESULT =====\n"
     )
-
-    print("\n===== IDENTITY AGENT RESULT =====\n")
-
-    import json
 
     print(
         json.dumps(
