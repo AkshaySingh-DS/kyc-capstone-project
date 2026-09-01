@@ -138,5 +138,12 @@
     "dob": "1985-11-08",
     "address": "52 Main Street, Delhi",
     "scenario": "multiple_issues"
+  },
+  {
+    "applicant_id": "APP-021",
+    "name": "Irfan Mohd.",
+    "dob": "18-09-1982",
+    "address": "123/24 Central Road, Hydrabad",
+    "scenario": "photo missmatch"
   }
 ]
