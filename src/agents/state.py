@@ -1,153 +1,112 @@
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import TypedDict, Optional, Dict, Any, List
 
 
 class KYCState(TypedDict, total=False):
     """
-    Shared state for the Phase 7 KYC multi-agent workflow.
+    Shared state used by the LangGraph KYC workflow.
 
-    Each agent reads the information it needs from this state
-    and adds its own results.
+    The state is passed from one agent to the next.
 
-    The state intentionally contains no business logic.
+    Flow:
+
+        Document Agent
+              ↓
+        Identity Agent
+              ↓
+        Sanctions Agent
+              ↓
+        Policy Agent
+              ↓
+        Decision Agent
     """
 
     # =====================================================
-    # APPLICATION
+    # APPLICATION INPUT
     # =====================================================
 
     applicant_id: str
 
-    # Path to the applicant's synthetic documents/photos.
-    document_paths: Dict[str, str]
-    photo_paths: Dict[str, str]
+    # Expected applicant information from applicants.json
+    expected_profile: Dict[str, Any]
 
     # =====================================================
-    # DOCUMENT VERIFICATION AGENT
+    # DOCUMENT INPUTS
     # =====================================================
 
-    document_result: Dict[str, Any]
-
-    # Examples:
-    #
-    # {
-    #     "status": "COMPLETE",
-    #     "documents_found": [...],
-    #     "missing_documents": [...]
-    # }
-
-    # =====================================================
-    # IDENTITY VERIFICATION AGENT
-    # =====================================================
-
-    identity_result: Dict[str, Any]
-
-    # Examples:
-    #
-    # {
-    #     "assessment": "PASS",
-    #     "name_match": True,
-    #     "dob_match": True
-    # }
-
-    # =====================================================
-    # SANCTIONS SCREENING AGENT
-    # =====================================================
-
-    sanctions_result: Dict[str, Any]
-
-    # Examples:
-    #
-    # {
-    #     "status": "CLEAR",
-    #     "candidates": []
-    # }
-
-    # =====================================================
-    # POLICY / COMPLIANCE AGENT
-    # =====================================================
-
-    policy_result: Dict[str, Any]
-
-    # Examples:
-    #
-    # {
-    #     "answer": "...",
-    #     "sources": [...]
-    # }
-
-    # =====================================================
-    # MULTIMODAL VERIFICATION
-    # =====================================================
-
-    multimodal_result: Dict[str, Any]
-
-    # Contains:
-    #
-    # - document visual analysis
-    # - face verification
+    # Optional custom document paths.
     #
     # Example:
     #
     # {
-    #     "document_analysis": [...],
-    #     "face_verification": {...}
+    #     "aadhar": "synthetic_documents/APP-001/aadhar.png",
+    #     "pan": "synthetic_documents/APP-001/pan.png",
+    #     "address_proof": "synthetic_documents/APP-001/address_proof.png"
     # }
+    document_paths: Dict[str, str]
 
-    # =====================================================
-    # FINAL DECISION AGENT
-    # =====================================================
-
-    decision: Optional[str]
-
-    confidence: Optional[float]
-
-    decision_reason: Optional[str]
-
-    # Examples:
+    # Applicant photograph paths.
     #
-    # decision:
-    #     "APPROVE"
-    #     "REVIEW"
-    #     "MORE_DOCUMENTS"
-    #     "ESCALATE"
+    # Example:
+    #
+    # {
+    #     "id_photo": "synthetic_photos/APP-001/id_photo.png",
+    #     "selfie": "synthetic_photos/APP-001/selfie.png"
+    # }
+    photo_paths: Dict[str, str]
+
+    # =====================================================
+    # DOCUMENT AGENT OUTPUT
+    # =====================================================
+
+    document_result: Dict[str, Any]
+
+    # =====================================================
+    # IDENTITY AGENT OUTPUT
+    # =====================================================
+
+    identity_result: Dict[str, Any]
+
+    # =====================================================
+    # SANCTIONS AGENT OUTPUT
+    # =====================================================
+
+    sanctions_result: Dict[str, Any]
+
+    # =====================================================
+    # POLICY AGENT OUTPUT
+    # =====================================================
+
+    policy_result: Dict[str, Any]
+
+    # =====================================================
+    # DECISION AGENT OUTPUT
+    # =====================================================
+
+    decision_result: Dict[str, Any]
 
     # =====================================================
     # WORKFLOW CONTROL
     # =====================================================
 
-    next_action: Optional[str]
-
-    # Used for conditional routing.
+    # Determines which step the LangGraph workflow
+    # should execute next.
     #
     # Examples:
     #
-    # "IDENTITY"
-    # "SANCTIONS"
-    # "POLICY"
-    # "DECISION"
-    # "MORE_DOCUMENTS"
-    # "ESCALATE"
+    # MORE_DOCUMENTS
+    # IDENTITY
+    # SANCTIONS
+    # POLICY
+    # DECISION
+    # END
+    next_action: str
 
     # =====================================================
-    # AGENT MESSAGES / AUDIT TRAIL
+    # WORKFLOW MESSAGES
     # =====================================================
 
+    # Simple messages from agents for logging/demo output.
     messages: List[str]
 
-    # Human-readable trace of what each agent did.
-    #
-    # Example:
-    #
-    # [
-    #     "Document Agent: documents complete",
-    #     "Identity Agent: identity verified",
-    #     "Sanctions Agent: no sanctions candidates found"
-    # ]
-
-    # =====================================================
-    # ERRORS
-    # =====================================================
-
-    errors: List[str]
-
-    # Non-fatal errors encountered during processing.
+    # Optional error information.
+    error: Optional[str]
