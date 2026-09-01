@@ -1,7 +1,7 @@
 from ibm_watsonx_ai.foundation_models import ModelInference
 from ibm_watsonx_ai import Credentials
 
-from retriever import RBIPolicyRetriever
+from .retriever import RBIPolicyRetriever
 
 
 # ---------------------------------------------------------
