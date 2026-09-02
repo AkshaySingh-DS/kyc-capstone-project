@@ -408,22 +408,6 @@ def build_workflow():
 
 kyc_workflow = build_workflow()
 
-# ============================================================
-# CREATE WORKFLOW GRAPH FOR VISUALIZATION
-# ============================================================
-
-from pathlib import Path
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DIAGRAM_DIR = PROJECT_ROOT / "docs" / "diagrams"
-DIAGRAM_DIR.mkdir(parents=True, exist_ok=True)
-png_data = kyc_workflow.get_graph().draw_mermaid_png()
-output_file = DIAGRAM_DIR / "kyc_workflow.png"
-
-with open(output_file, "wb") as f:
-    f.write(png_data)
-print("Saved: kyc_workflow.png")
-
-
 @mlflow.trace(name="KYC Workflow")
 def run_kyc(initial_state):
     return kyc_workflow.invoke(initial_state)
