@@ -105,7 +105,7 @@ def route_after_document(state: KYCState):
 # ============================================================
 # IDENTITY AGENT NODE
 # ============================================================
-@mlflow.trace(name="Document Agent")
+@mlflow.trace(name="identity Agent")
 def identity_node(state: KYCState):
 
     result = identity_agent.run(
@@ -129,7 +129,7 @@ def identity_node(state: KYCState):
 # ============================================================
 # SANCTIONS AGENT NODE
 # ============================================================
-@mlflow.trace(name="Document Agent")
+@mlflow.trace(name="sanctions Agent")
 def sanctions_node(state: KYCState):
 
     result = sanctions_agent.run(
@@ -176,7 +176,7 @@ def sanctions_review_node(state: KYCState):
 # ============================================================
 # POLICY AGENT NODE
 # ============================================================
-@mlflow.trace(name="Document Agent")
+@mlflow.trace(name="policy Agent")
 def policy_node(state: KYCState):
 
     result = policy_agent.run(
@@ -206,7 +206,7 @@ def policy_node(state: KYCState):
 # ============================================================
 # DECISION AGENT NODE
 # ============================================================
-@mlflow.trace(name="Document Agent")
+@mlflow.trace(name="decision Agent")
 def decision_node(state: KYCState):
 
     result = decision_agent.run(
@@ -407,6 +407,22 @@ def build_workflow():
 # ============================================================
 
 kyc_workflow = build_workflow()
+
+# ============================================================
+# CREATE WORKFLOW GRAPH FOR VISUALIZATION
+# ============================================================
+
+from pathlib import Path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DIAGRAM_DIR = PROJECT_ROOT / "docs" / "diagrams"
+DIAGRAM_DIR.mkdir(parents=True, exist_ok=True)
+png_data = kyc_workflow.get_graph().draw_mermaid_png()
+output_file = DIAGRAM_DIR / "kyc_workflow.png"
+
+with open(output_file, "wb") as f:
+    f.write(png_data)
+print("Saved: kyc_workflow.png")
+
 
 @mlflow.trace(name="KYC Workflow")
 def run_kyc(initial_state):
