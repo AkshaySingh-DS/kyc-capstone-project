@@ -8,3 +8,7 @@ __pycache__/
 
 # Optional
 .pytest_cache/
+
+.DS_Store
+.synthetic_photos/.DS_Store
+docs/.DS_Store
