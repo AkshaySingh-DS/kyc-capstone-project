@@ -27,9 +27,14 @@ DOCUMENT_ROOT = PROJECT_ROOT / "synthetic_documents"
 PHOTO_ROOT = PROJECT_ROOT / "synthetic_photos"
 
 
+# ---------------------------------------------------------------------------
+# Applicant Data
+# ---------------------------------------------------------------------------
+
 def load_applicants() -> list[dict]:
     if not APPLICANTS_FILE.exists():
         raise FileNotFoundError(f"Applicant file not found: {APPLICANTS_FILE}")
+
     with APPLICANTS_FILE.open("r", encoding="utf-8") as file:
         return json.load(file)
 
@@ -38,6 +43,10 @@ APPLICANTS = load_applicants()
 APPLICANT_MAP = {a["applicant_id"]: a for a in APPLICANTS}
 APPLICANT_IDS = list(APPLICANT_MAP.keys())
 
+
+# ---------------------------------------------------------------------------
+# Document Helpers
+# ---------------------------------------------------------------------------
 
 def get_applicant_paths(applicant_id: str) -> dict[str, Path]:
     return {
@@ -90,6 +99,10 @@ def load_document_previews(applicant_id: str):
     )
 
 
+# ---------------------------------------------------------------------------
+# Formatting Helpers
+# ---------------------------------------------------------------------------
+
 def safe(value: Any, default: str = "N/A") -> str:
     return default if value is None or value == "" else str(value)
 
@@ -98,18 +111,29 @@ def status_icon(status: Any) -> str:
     value = str(status or "").upper()
 
     if value in {
-        "PASS", "MATCH", "CLEAR", "COMPLETE",
-        "APPROVE", "HIGH", "EVIDENCE_FOUND"
+        "PASS",
+        "MATCH",
+        "CLEAR",
+        "COMPLETE",
+        "APPROVE",
+        "HIGH",
+        "EVIDENCE_FOUND",
     }:
         return "✓"
 
     if value in {
-        "REVIEW", "LOW", "POTENTIAL_MATCH", "ANALYSIS_UNCERTAIN"
+        "REVIEW",
+        "LOW",
+        "POTENTIAL_MATCH",
+        "ANALYSIS_UNCERTAIN",
     }:
         return "⚠"
 
     if value in {
-        "MISMATCH", "REJECT", "INCOMPLETE", "ERROR"
+        "MISMATCH",
+        "REJECT",
+        "INCOMPLETE",
+        "ERROR",
     }:
         return "✗"
 
@@ -122,9 +146,11 @@ def format_list(value: Any) -> str:
 
     if isinstance(value, dict):
         lines = []
+
         for key, item in value.items():
             if item not in (None, "", [], {}):
                 label = key.replace("_", " ").title()
+
                 if isinstance(item, (dict, list)):
                     lines.append(
                         f"**{label}:**\n```json\n"
@@ -132,21 +158,26 @@ def format_list(value: Any) -> str:
                     )
                 else:
                     lines.append(f"- **{label}:** {item}")
+
         return "\n".join(lines) or "_None reported._"
 
     if isinstance(value, list):
         lines = []
+
         for item in value:
             if isinstance(item, dict):
                 parts = []
+
                 for key, item_value in item.items():
                     if item_value not in (None, "", [], {}):
                         parts.append(
                             f"**{key.replace('_', ' ').title()}:** {item_value}"
                         )
+
                 lines.append("- " + " | ".join(parts))
             else:
                 lines.append(f"- {item}")
+
         return "\n".join(lines) or "_None reported._"
 
     return safe(value)
@@ -157,6 +188,7 @@ def format_sources(sources: Any) -> str:
         return "_No RBI policy citations available._"
 
     lines = []
+
     for source in sources:
         if not isinstance(source, dict):
             lines.append(f"- {source}")
@@ -171,12 +203,23 @@ def format_sources(sources: Any) -> str:
     return "\n".join(lines)
 
 
+# ---------------------------------------------------------------------------
+# Render Functions
+# ---------------------------------------------------------------------------
+
 def render_decision(decision_result: dict) -> str:
     if not decision_result:
         return "## 🎯 KYC Decision\n\n_Analysis has not been run yet._"
 
-    decision = safe(decision_result.get("decision"), "UNKNOWN").upper()
-    confidence = safe(decision_result.get("confidence"), "UNKNOWN").upper()
+    decision = safe(
+        decision_result.get("decision"),
+        "UNKNOWN",
+    ).upper()
+
+    confidence = safe(
+        decision_result.get("confidence"),
+        "UNKNOWN",
+    ).upper()
 
     icons = {
         "APPROVE": "🟢",
@@ -188,7 +231,8 @@ def render_decision(decision_result: dict) -> str:
     return (
         f"## {icons.get(decision, '⚪')} {decision}\n\n"
         f"**Confidence:** `{confidence}`\n\n"
-        f"### Why?\n\n{format_list(decision_result.get('reasons', []))}"
+        f"### Why?\n\n"
+        f"{format_list(decision_result.get('reasons', []))}"
     )
 
 
@@ -200,23 +244,44 @@ def render_verification_status(final_state: dict) -> str:
     decision_result = final_state.get("decision_result", {})
 
     rows = [
-        ("Document Verification", document_result.get("status", "NOT_RUN")),
-        ("Identity Verification", identity_result.get("status", "NOT_RUN")),
+        (
+            "Document Verification",
+            document_result.get("status", "NOT_RUN"),
+        ),
+        (
+            "Identity Verification",
+            identity_result.get("status", "NOT_RUN"),
+        ),
         (
             "Photo Verification",
             identity_result.get("face_verification", {}).get(
-                "assessment", "NOT_RUN"
+                "assessment",
+                "NOT_RUN",
             ),
         ),
-        ("Sanctions Screening", sanctions_result.get("screening_status", "NOT_RUN")),
-        ("Policy Compliance", policy_result.get("status", "NOT_RUN")),
-        ("Decision Agent", decision_result.get("decision", "NOT_RUN")),
+        (
+            "Sanctions Screening",
+            sanctions_result.get("screening_status", "NOT_RUN"),
+        ),
+        (
+            "Policy Compliance",
+            policy_result.get("status", "NOT_RUN"),
+        ),
+        (
+            "Decision Agent",
+            decision_result.get("decision", "NOT_RUN"),
+        ),
     ]
 
-    lines = ["| Component | Status |", "|---|---|"]
+    lines = [
+        "| Component | Status |",
+        "|---|---|",
+    ]
+
     for name, status in rows:
         lines.append(
-            f"| **{name}** | {status_icon(status)} `{safe(status, 'NOT RUN')}` |"
+            f"| **{name}** | "
+            f"{status_icon(status)} `{safe(status, 'NOT RUN')}` |"
         )
 
     return "\n".join(lines)
@@ -229,13 +294,35 @@ def render_evidence(final_state: dict) -> str:
     policy_result = final_state.get("policy_result", {})
     decision_result = final_state.get("decision_result", {})
 
-    document_assessment = decision_result.get("document_assessment", {})
-    identity_assessment = decision_result.get("identity_assessment", {})
-    sanctions_assessment = decision_result.get("sanctions_assessment", {})
-    policy_assessment = decision_result.get("policy_assessment", {})
+    document_assessment = decision_result.get(
+        "document_assessment",
+        {},
+    )
 
-    identity_verification = identity_result.get("identity_verification", {})
-    face_verification = identity_result.get("face_verification", {})
+    identity_assessment = decision_result.get(
+        "identity_assessment",
+        {},
+    )
+
+    sanctions_assessment = decision_result.get(
+        "sanctions_assessment",
+        {},
+    )
+
+    policy_assessment = decision_result.get(
+        "policy_assessment",
+        {},
+    )
+
+    identity_verification = identity_result.get(
+        "identity_verification",
+        {},
+    )
+
+    face_verification = identity_result.get(
+        "face_verification",
+        {},
+    )
 
     return f"""
 ### 📄 Document Verification
@@ -244,15 +331,30 @@ def render_evidence(final_state: dict) -> str:
 
 **Documents found**
 
-{format_list(document_assessment.get('documents_found', document_result.get('documents_found', [])))}
+{format_list(
+    document_assessment.get(
+        'documents_found',
+        document_result.get('documents_found', []),
+    )
+)}
 
 **Missing documents**
 
-{format_list(decision_result.get('missing_documents', document_result.get('missing_documents', [])))}
+{format_list(
+    decision_result.get(
+        'missing_documents',
+        document_result.get('missing_documents', []),
+    )
+)}
 
 **Visual / tampering evidence**
 
-{format_list(document_assessment.get('visual_analysis', document_result.get('visual_analysis', [])))}
+{format_list(
+    document_assessment.get(
+        'visual_analysis',
+        document_result.get('visual_analysis', []),
+    )
+)}
 
 ---
 
@@ -265,7 +367,7 @@ def render_evidence(final_state: dict) -> str:
 | Name similarity | `{safe(identity_assessment.get('name_similarity', identity_verification.get('name_similarity')))}`
 | DOB match | `{safe(identity_assessment.get('dob_match', identity_verification.get('dob_match')))}`
 | Address similarity | `{safe(identity_assessment.get('address_similarity', identity_verification.get('address_similarity')))}`
-
+    
 **Photo Verification**
 
 **Assessment:** `{safe(face_verification.get('assessment'))}`
@@ -284,7 +386,12 @@ def render_evidence(final_state: dict) -> str:
 
 **Candidates**
 
-{format_list(sanctions_assessment.get('candidates', sanctions_result.get('candidates', [])))}
+{format_list(
+    sanctions_assessment.get(
+        'candidates',
+        sanctions_result.get('candidates', []),
+    )
+)}
 
 **Evidence**
 
@@ -298,11 +405,22 @@ def render_evidence(final_state: dict) -> str:
 
 **Policy basis**
 
-{safe(decision_result.get('policy_basis', policy_result.get('answer', '')), '_No policy answer available._')}
+{safe(
+    decision_result.get(
+        'policy_basis',
+        policy_result.get('answer', ''),
+    ),
+    '_No policy answer available._',
+)}
 
 **RBI citations**
 
-{format_sources(policy_assessment.get('citations', policy_result.get('sources', [])))}
+{format_sources(
+    policy_assessment.get(
+        'citations',
+        policy_result.get('sources', []),
+    )
+)}
 """
 
 
@@ -317,43 +435,85 @@ def render_audit(final_state: dict) -> str:
 
 def render_workflow_log(final_state: dict) -> str:
     messages = final_state.get("messages", [])
-    lines = [f"- {message}" for message in messages if message]
+
+    lines = [
+        f"- {message}"
+        for message in messages
+        if message
+    ]
 
     if final_state.get("sanctions_review_attempted", False):
-        lines.append("- 🔄 One-time sanctions feedback review was executed.")
+        lines.append(
+            "- 🔄 One-time sanctions feedback review was executed."
+        )
 
-    return "\n".join(lines) if lines else "_No workflow messages._"
+    return (
+        "\n".join(lines)
+        if lines
+        else "_No workflow messages._"
+    )
 
+
+# ---------------------------------------------------------------------------
+# Analysis
+# ---------------------------------------------------------------------------
 
 def analyze_application(applicant_id: str):
     if not applicant_id:
-        message = "## ⚠️ Select an applicant\n\nPlease select an applicant."
-        return message, message, message, "{}", "_No workflow execution._", ""
+        message = (
+            "## ⚠️ Select an applicant\n\n"
+            "Please select an applicant."
+        )
+
+        return (
+            message,
+            message,
+            message,
+            "{}",
+            "_No workflow execution._",
+            "",
+        )
 
     applicant = APPLICANT_MAP.get(applicant_id)
+
     if applicant is None:
-        message = f"## ❌ Applicant Not Found\n\n`{applicant_id}` does not exist."
-        return message, message, message, "{}", message, ""
+        message = (
+            "## ❌ Applicant Not Found\n\n"
+            f"`{applicant_id}` does not exist."
+        )
+
+        return (
+            message,
+            message,
+            message,
+            "{}",
+            message,
+            "",
+        )
 
     paths = get_applicant_paths(applicant_id)
 
     initial_state = {
         "applicant_id": applicant_id,
         "expected_profile": applicant,
+
         "document_paths": {
             "aadhar": str(paths["aadhar"]),
             "pan": str(paths["pan"]),
             "address_proof": str(paths["address_proof"]),
         },
+
         "photo_paths": {
             "id_photo": str(paths["id_photo"]),
             "selfie": str(paths["selfie"]),
         },
+
         "document_result": {},
         "identity_result": {},
         "sanctions_result": {},
         "policy_result": {},
         "decision_result": {},
+
         "next_action": None,
         "messages": [],
         "error": None,
@@ -362,15 +522,31 @@ def analyze_application(applicant_id: str):
 
     try:
         final_state = kyc_workflow.invoke(initial_state)
+
     except Exception as exc:
         error = (
             "## ❌ Workflow Execution Failed\n\n"
             f"**Error:** `{type(exc).__name__}: {exc}`"
         )
-        return error, error, error, "{}", error, ""
 
-    decision_result = final_state.get("decision_result", {})
-    decision = decision_result.get("decision", "UNKNOWN")
+        return (
+            error,
+            error,
+            error,
+            "{}",
+            error,
+            "",
+        )
+
+    decision_result = final_state.get(
+        "decision_result",
+        {},
+    )
+
+    decision = decision_result.get(
+        "decision",
+        "UNKNOWN",
+    )
 
     return (
         render_decision(decision_result),
@@ -378,28 +554,111 @@ def analyze_application(applicant_id: str):
         render_evidence(final_state),
         render_audit(final_state),
         render_workflow_log(final_state),
-        f"### ✅ Analysis Complete\n\nApplicant `{applicant_id}` → **{decision}**",
+        f"### ✅ Analysis Complete\n\n"
+        f"Applicant `{applicant_id}` → **{decision}**",
     )
 
+
+# ---------------------------------------------------------------------------
+# NEW:
+# Reset all analysis outputs when applicant changes
+# ---------------------------------------------------------------------------
+
+def handle_applicant_change(applicant_id: str):
+    """
+    Load the newly selected applicant's documents AND reset all
+    previous KYC analysis outputs.
+
+    This prevents the previous applicant's KYC decision,
+    verification status, evidence, audit trail, and workflow
+    information from remaining on screen.
+    """
+
+    # Load new applicant documents
+    (
+        aadhar,
+        pan,
+        address_proof,
+        id_photo,
+        selfie,
+        applicant_info,
+    ) = load_document_previews(applicant_id)
+
+    # Reset analysis section
+    decision_default = (
+        "## 🎯 KYC Decision\n\n"
+        "_Analysis has not been run yet._"
+    )
+
+    status_default = """| Component | Status |
+|---|---|
+| **Document Verification** | • `NOT RUN` |
+| **Identity Verification** | • `NOT RUN` |
+| **Photo Verification** | • `NOT RUN` |
+| **Sanctions Screening** | • `NOT RUN` |
+| **Policy Compliance** | • `NOT RUN` |
+| **Decision Agent** | • `NOT RUN` |"""
+
+    evidence_default = (
+        "_Run an analysis to see structured evidence._"
+    )
+
+    audit_default = "{}"
+
+    workflow_default = (
+        "_No workflow execution yet._"
+    )
+
+    summary_default = ""
+
+    return (
+        # Document previews
+        aadhar,
+        pan,
+        address_proof,
+        id_photo,
+        selfie,
+        applicant_info,
+
+        # Reset previous applicant analysis
+        decision_default,
+        status_default,
+        evidence_default,
+        audit_default,
+        workflow_default,
+        summary_default,
+    )
+
+
+# ---------------------------------------------------------------------------
+# UI Styling
+# ---------------------------------------------------------------------------
 
 CUSTOM_CSS = """
 #app-header {
     text-align: center;
     margin-bottom: 15px;
 }
+
 #app-header h1 {
     font-size: 32px;
     margin-bottom: 5px;
 }
+
 #app-header p {
     font-size: 16px;
     opacity: 0.8;
 }
+
 .document-preview img {
     object-fit: contain;
 }
 """
 
+
+# ---------------------------------------------------------------------------
+# Gradio Application
+# ---------------------------------------------------------------------------
 
 with gr.Blocks(
     title="KYC Compliance Assistant",
@@ -419,7 +678,12 @@ Face Verification • OFAC Screening • RBI Policy RAG
         elem_id="app-header",
     )
 
+    # -----------------------------------------------------------------------
+    # Applicant Selection
+    # -----------------------------------------------------------------------
+
     with gr.Row():
+
         with gr.Column(scale=3):
             applicant_dropdown = gr.Dropdown(
                 choices=APPLICANT_IDS,
@@ -439,37 +703,70 @@ Face Verification • OFAC Screening • RBI Policy RAG
         "Select an applicant to preview the submitted evidence."
     )
 
+    # -----------------------------------------------------------------------
+    # KYC Evidence
+    # -----------------------------------------------------------------------
+
     gr.Markdown("## 📁 KYC Evidence")
 
     with gr.Row():
+
         aadhar_image = gr.Image(
-            label="Aadhaar", type="filepath", height=220, interactive=False,
-            elem_classes=["document-preview"]
+            label="Aadhaar",
+            type="filepath",
+            height=220,
+            interactive=False,
+            elem_classes=["document-preview"],
         )
+
         pan_image = gr.Image(
-            label="PAN", type="filepath", height=220, interactive=False,
-            elem_classes=["document-preview"]
+            label="PAN",
+            type="filepath",
+            height=220,
+            interactive=False,
+            elem_classes=["document-preview"],
         )
+
         address_image = gr.Image(
-            label="Address Proof", type="filepath", height=220, interactive=False,
-            elem_classes=["document-preview"]
+            label="Address Proof",
+            type="filepath",
+            height=220,
+            interactive=False,
+            elem_classes=["document-preview"],
         )
 
     with gr.Row():
+
         id_photo_image = gr.Image(
-            label="ID Photo", type="filepath", height=220, interactive=False,
-            elem_classes=["document-preview"]
+            label="ID Photo",
+            type="filepath",
+            height=220,
+            interactive=False,
+            elem_classes=["document-preview"],
         )
+
         selfie_image = gr.Image(
-            label="Selfie", type="filepath", height=220, interactive=False,
-            elem_classes=["document-preview"]
+            label="Selfie",
+            type="filepath",
+            height=220,
+            interactive=False,
+            elem_classes=["document-preview"],
         )
+
+    # -----------------------------------------------------------------------
+    # KYC Decision
+    # -----------------------------------------------------------------------
 
     gr.Markdown("## 🎯 KYC Decision")
 
     decision_output = gr.Markdown(
-        "## 🎯 KYC Decision\n\n_Analysis has not been run yet._"
+        "## 🎯 KYC Decision\n\n"
+        "_Analysis has not been run yet._"
     )
+
+    # -----------------------------------------------------------------------
+    # Verification Status
+    # -----------------------------------------------------------------------
 
     gr.Markdown("## 🔎 Verification Status")
 
@@ -484,36 +781,74 @@ Face Verification • OFAC Screening • RBI Policy RAG
 | **Decision Agent** | • `NOT RUN` |"""
     )
 
+    # -----------------------------------------------------------------------
+    # Evidence & Reasoning
+    # -----------------------------------------------------------------------
+
     gr.Markdown("## 🧾 Evidence & Reasoning")
 
     evidence_output = gr.Markdown(
         "_Run an analysis to see structured evidence._"
     )
 
-    with gr.Accordion("📋 Full Audit Trail", open=False):
+    # -----------------------------------------------------------------------
+    # Audit Trail
+    # -----------------------------------------------------------------------
+
+    with gr.Accordion(
+        "📋 Full Audit Trail",
+        open=False,
+    ):
         audit_output = gr.Code(
             value="{}",
             language="json",
             label="Decision Audit JSON",
         )
 
-    with gr.Accordion("⚙️ Workflow Execution", open=False):
-        workflow_output = gr.Markdown("_No workflow execution yet._")
+    # -----------------------------------------------------------------------
+    # Workflow
+    # -----------------------------------------------------------------------
+
+    with gr.Accordion(
+        "⚙️ Workflow Execution",
+        open=False,
+    ):
+        workflow_output = gr.Markdown(
+            "_No workflow execution yet._"
+        )
 
     analysis_summary = gr.Markdown("")
 
+    # -----------------------------------------------------------------------
+    # IMPORTANT FIX:
+    # Applicant dropdown now resets previous analysis outputs
+    # -----------------------------------------------------------------------
+
     applicant_dropdown.change(
-        fn=load_document_previews,
+        fn=handle_applicant_change,
         inputs=[applicant_dropdown],
         outputs=[
+            # New applicant documents
             aadhar_image,
             pan_image,
             address_image,
             id_photo_image,
             selfie_image,
             applicant_info,
+
+            # Reset previous applicant's analysis
+            decision_output,
+            status_output,
+            evidence_output,
+            audit_output,
+            workflow_output,
+            analysis_summary,
         ],
     )
+
+    # -----------------------------------------------------------------------
+    # Analyze Button
+    # -----------------------------------------------------------------------
 
     analyze_button.click(
         fn=analyze_application,
@@ -527,6 +862,10 @@ Face Verification • OFAC Screening • RBI Policy RAG
             analysis_summary,
         ],
     )
+
+    # -----------------------------------------------------------------------
+    # Initial Page Load
+    # -----------------------------------------------------------------------
 
     demo.load(
         fn=load_document_previews,
@@ -542,5 +881,13 @@ Face Verification • OFAC Screening • RBI Policy RAG
     )
 
 
+# ---------------------------------------------------------------------------
+# Launch
+# ---------------------------------------------------------------------------
+
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(
+        server_name="127.0.0.1",
+        server_port=5000,
+        share=True,
+    )
