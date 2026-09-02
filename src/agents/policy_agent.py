@@ -2,7 +2,6 @@ from typing import Optional
 
 from src.policy_rag.policy_answer import RBIPolicyAnswer
 
-
 class PolicyAgent:
     """
     Policy / Compliance Agent.
@@ -187,7 +186,7 @@ class PolicyAgent:
     # =====================================================
     # MAIN AGENT
     # =====================================================
-
+    
     def run(
         self,
         document_result: dict,

@@ -22,6 +22,9 @@ from src.agents.decision_agent import (
     DecisionAgent
 )
 
+import mlflow
+
+from config.mlflow_config import init_mlflow
 
 # ============================================================
 # CREATE AGENTS
@@ -37,7 +40,7 @@ decision_agent = DecisionAgent()
 # ============================================================
 # DOCUMENT AGENT NODE
 # ============================================================
-
+@mlflow.trace(name="Document Agent")
 def document_node(state: KYCState):
     result = document_agent.run(state)
 
@@ -97,7 +100,7 @@ def route_after_document(state: KYCState):
 # ============================================================
 # IDENTITY AGENT NODE
 # ============================================================
-
+@mlflow.trace(name="Document Agent")
 def identity_node(state: KYCState):
 
     result = identity_agent.run(
@@ -121,7 +124,7 @@ def identity_node(state: KYCState):
 # ============================================================
 # SANCTIONS AGENT NODE
 # ============================================================
-
+@mlflow.trace(name="Document Agent")
 def sanctions_node(state: KYCState):
 
     result = sanctions_agent.run(
@@ -168,7 +171,7 @@ def sanctions_review_node(state: KYCState):
 # ============================================================
 # POLICY AGENT NODE
 # ============================================================
-
+@mlflow.trace(name="Document Agent")
 def policy_node(state: KYCState):
 
     result = policy_agent.run(
@@ -198,7 +201,7 @@ def policy_node(state: KYCState):
 # ============================================================
 # DECISION AGENT NODE
 # ============================================================
-
+@mlflow.trace(name="Document Agent")
 def decision_node(state: KYCState):
 
     result = decision_agent.run(
@@ -400,6 +403,9 @@ def build_workflow():
 
 kyc_workflow = build_workflow()
 
+@mlflow.trace(name="KYC Workflow")
+def run_kyc(initial_state):
+    return kyc_workflow.invoke(initial_state)
 
 # ============================================================
 # MAIN PROGRAM
@@ -516,9 +522,7 @@ if __name__ == "__main__":
 
     try:
 
-        final_state = kyc_workflow.invoke(
-            initial_state
-        )
+        final_state = run_kyc(initial_state)
 
     except Exception as e:
 

@@ -47,7 +47,7 @@ class SanctionsScreeningAgent:
     # =========================================================
     # MAIN SCREENING
     # =========================================================
-
+    
     def run(
         self,
         applicant_id: str,
