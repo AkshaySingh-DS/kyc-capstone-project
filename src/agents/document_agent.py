@@ -19,7 +19,6 @@ class DocumentVerificationAgent:
 
     NOTE:
     This agent currently works with the shared KYCState structure.
-    Final LangGraph state wiring will be completed later.
     """
 
     REQUIRED_DOCUMENTS = {
