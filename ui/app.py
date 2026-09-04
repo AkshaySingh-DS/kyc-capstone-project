@@ -209,7 +209,7 @@ def format_sources(sources: Any) -> str:
 
 def render_decision(decision_result: dict) -> str:
     if not decision_result:
-        return "## 🎯 KYC Decision\n\n_Analysis has not been run yet._"
+        return "_Analysis has not been run yet._"
 
     decision = safe(
         decision_result.get("decision"),
@@ -586,7 +586,6 @@ def handle_applicant_change(applicant_id: str):
 
     # Reset analysis section
     decision_default = (
-        "## 🎯 KYC Decision\n\n"
         "_Analysis has not been run yet._"
     )
 
@@ -760,7 +759,6 @@ Face Verification • OFAC Screening • RBI Policy RAG
     gr.Markdown("## 🎯 KYC Decision")
 
     decision_output = gr.Markdown(
-        "## 🎯 KYC Decision\n\n"
         "_Analysis has not been run yet._"
     )
 
