@@ -38,7 +38,7 @@ COLLECTION_NAME = "rbi_kyc_policy"
 # ---------------------------------------------------------
 
 embed_params = {
-    EmbedTextParamsMetaNames.TRUNCATE_INPUT_TOKENS: 3,
+    EmbedTextParamsMetaNames.TRUNCATE_INPUT_TOKENS: 256,
     EmbedTextParamsMetaNames.RETURN_OPTIONS: {
         "input_text": True
     },
