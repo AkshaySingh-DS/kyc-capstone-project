@@ -1,8 +1,7 @@
 from pathlib import Path
-
 from .ocr import OCRProcessor
 from .field_extractor import FieldExtractor
-
+from src.utils.logger import logger
 
 class DocumentProcessor:
     """
@@ -42,47 +41,82 @@ class DocumentProcessor:
             }
         """
 
-        image_path = Path(image_path)
+        logger.info(
+            f"Document Processing started | "
+            f"file={image_path}"
+        )        
 
-        if not image_path.exists():
-            raise FileNotFoundError(
-                f"Document not found: {image_path}"
+        try:
+
+            image_path = Path(image_path)
+            # -----------------------------------------------------
+            # 1. OCR
+            # -----------------------------------------------------
+
+            logger.info(
+                f"OCR has started | "
+                f"file={image_path}"
             )
 
-        # -----------------------------------------------------
-        # 1. OCR
-        # -----------------------------------------------------
+            raw_text = self.ocr_processor.extract_text(
+                str(image_path)
+            )
 
-        raw_text = self.ocr_processor.extract_text(
-            str(image_path)
-        )
+            logger.info(
+                f"OCR has completed | "
+                f"file={image_path} | "
+                f"text_detected={True if raw_text else False}"
+            )
 
-        # -----------------------------------------------------
-        # 2. Field Extraction
-        # -----------------------------------------------------
+            # -----------------------------------------------------
+            # 2. Field Extraction
+            # -----------------------------------------------------
 
-        fields = self.field_extractor.extract(
-            raw_text
-        )
+            fields = self.field_extractor.extract(
+                raw_text
+            )
 
-        # -----------------------------------------------------
-        # 3. Field Validation
-        # -----------------------------------------------------
+            logger.info(
+                f"FIELD EXTRACTION completed | "
+                f"file={image_path} | Document_type= {fields.get("document_type")} | "
+                f"fields_found={[field for field in fields.keys()]}"
+            )
 
-        validation = self.validate_fields(
-            fields
-        )
+            # -----------------------------------------------------
+            # 3. Field Validation
+            # -----------------------------------------------------
 
-        # -----------------------------------------------------
-        # 4. Return structured result
-        # -----------------------------------------------------
+            validation = self.validate_fields(
+                fields
+            )
 
-        return {
-            "document": image_path.name,
-            "raw_text": raw_text,
-            "fields": fields,
-            "validation": validation,
-        }
+            logger.info(
+                f"FIELD validation completed | "
+                f"fields_valid={validation.get("valid")} | "
+            )
+
+            # -----------------------------------------------------
+            # 4. Return structured result
+            # -----------------------------------------------------
+
+            logger.info(
+                f"Document Processing completed | "
+                f"file={image_path}"
+            )   
+            
+            return {
+                "document": image_path.name,
+                "raw_text": raw_text,
+                "fields": fields,
+                "validation": validation,
+            }
+        
+        except Exception as e:
+            logger.exception(
+                f"Document Not Found| "
+                f"file={image_path}"
+            )
+            
 
     # =========================================================
     # FIELD VALIDATION

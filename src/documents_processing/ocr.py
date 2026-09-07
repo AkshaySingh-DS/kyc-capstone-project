@@ -1,13 +1,14 @@
 import json
 from pathlib import Path
-
 from paddleocr import PaddleOCR
+from src.utils.logger import logger
 
 
 class OCRProcessor:
     """Handles OCR processing using PaddleOCR."""
 
     def __init__(self):
+
         self.ocr = PaddleOCR(
             lang="en",
             enable_mkldnn=False,
@@ -28,7 +29,11 @@ class OCRProcessor:
             raise FileNotFoundError(
                 f"Document not found: {image_path}"
             )
-
+        
+        logger.info(
+            f"Paddle OCR is being initialized..."
+        )
+        
         result = self.ocr.predict(str(image_path))
 
         text_lines = []

@@ -14,3 +14,5 @@ __pycache__/
 docs/.DS_Store
 
 mlflow.db
+
+logs/
