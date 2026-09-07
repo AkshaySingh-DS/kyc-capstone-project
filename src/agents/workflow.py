@@ -25,6 +25,7 @@ from src.agents.decision_agent import (
 import mlflow
 
 from config.mlflow_config import init_mlflow
+from src.utils.logger import logger
 
 # ------------------------------------------------------------
 # Initialize MLflow
@@ -47,47 +48,70 @@ decision_agent = DecisionAgent()
 # ============================================================
 @mlflow.trace(name="Document Agent")
 def document_node(state: KYCState):
-    result = document_agent.run(state)
 
-    document_result = result.get("document_result", {})
+    applicant_id = state["applicant_id"]
+    logger.info(
+        f"DOCUMENT AGENT started | applicant={applicant_id}"
+    )
+    try:
+        result = document_agent.run(state)
 
-    # If documents are incomplete, create an early
-    # MORE_DOCUMENTS result so the final output is not empty.
-    if document_result.get("status") == "INCOMPLETE":
+        document_result = result.get("document_result", {})
 
-        decision_result = {
-            "applicant_id": state["applicant_id"],
-            "decision": "MORE_DOCUMENTS",
-            "confidence": "HIGH",
-            "reasons": [
-                "Required KYC documents are missing.",
-                (
-                    "The application cannot proceed to identity "
-                    "verification until all required documents are available."
+        # If documents are incomplete, create an early
+        # MORE_DOCUMENTS result so the final output is not empty.
+        if document_result.get("status") == "INCOMPLETE":
+
+            decision_result = {
+                "applicant_id": state["applicant_id"],
+                "decision": "MORE_DOCUMENTS",
+                "confidence": "HIGH",
+                "reasons": [
+                    "Required KYC documents are missing.",
+                    (
+                        "The application cannot proceed to identity "
+                        "verification until all required documents are available."
+                    ),
+                ],
+                "missing_documents": document_result.get(
+                    "missing_documents", []
                 ),
-            ],
-            "missing_documents": document_result.get(
-                "missing_documents", []
-            ),
-            "documents_found": document_result.get(
-                "documents_found", []
-            ),
-            "next_action": "END",
-        }
+                "documents_found": document_result.get(
+                    "documents_found", []
+                ),
+                "next_action": "END",
+            }
+
+            logger.warning(
+                f"DOCUMENT AGENT completed | "
+                f"applicant={applicant_id} | "
+                f"status=INCOMPLETE | "
+                f"missing={document_result.get('missing_documents', [])}"
+            )
+
+            return {
+                "document_result": document_result,
+                "decision_result": decision_result,
+                "next_action": "MORE_DOCUMENTS",
+                "messages": result.get("messages", []),
+            }
+        
+        logger.info(
+            f"DOCUMENT AGENT completed | "
+            f"applicant={applicant_id} | "
+            f"status={document_result.get("status")}" 
+        )
 
         return {
             "document_result": document_result,
-            "decision_result": decision_result,
-            "next_action": "MORE_DOCUMENTS",
+            "next_action": result.get("next_action"),
             "messages": result.get("messages", []),
         }
-
-    return {
-        "document_result": document_result,
-        "next_action": result.get("next_action"),
-        "messages": result.get("messages", []),
-    }
-
+    
+    except Exception as e:
+        logger.exception(
+            f"DOCUMENT AGNENT failed| applicant={applicant_id}"
+        )
 
 # ============================================================
 # ROUTE AFTER DOCUMENT AGENT
@@ -97,7 +121,21 @@ def route_after_document(state: KYCState):
     document_result = state.get("document_result", {})
 
     if document_result.get("status") == "INCOMPLETE":
+
+        logger.warning(
+            f"WORKFLOW routing | "
+            f"applicant={applicant_id} | "
+            f"next=END | "
+            f"reason=MISSING_DOCUMENTS"
+        )
+
         return "end"
+
+    logger.info(
+        f"WORKFLOW routing | "
+        f"applicant={applicant_id} | "
+        f"next=IDENTITY"
+    )
 
     return "identity"
 
@@ -108,22 +146,38 @@ def route_after_document(state: KYCState):
 @mlflow.trace(name="identity Agent")
 def identity_node(state: KYCState):
 
-    result = identity_agent.run(
-        applicant_id=state["applicant_id"],
-        expected_profile=state["expected_profile"],
-        document_result=state["document_result"],
-        photo_paths=state.get("photo_paths", {}),
+    applicant_id = state["applicant_id"]
+    logger.info(
+        f"IDENTITY AGENT started | applicant={applicant_id}"
     )
 
-    return {
-        "identity_result": result.get(
-            "identity_result", {}
-        ),
-        "next_action": result.get("next_action"),
-        "messages": [
-            result.get("message", "")
-        ],
-    }
+    try:
+        result = identity_agent.run(
+            applicant_id=state["applicant_id"],
+            expected_profile=state["expected_profile"],
+            document_result=state["document_result"],
+            photo_paths=state.get("photo_paths", {}),
+        )
+
+        identity_result = result.get("identity_result", {})
+        logger.info(
+            f"IDENTITY AGENT completed | "
+            f"applicant={applicant_id} | "
+            f"status={identity_result.get("status")}" 
+        )
+
+        return {
+            "identity_result": identity_result,
+            "next_action": result.get("next_action"),
+            "messages": [
+                result.get("message", "")
+            ],
+        }
+
+    except Exception as e:
+        logger.exception(
+            f"IDENTITY AGNENT failed| applicant={applicant_id}"
+        )
 
 
 # ============================================================
@@ -132,23 +186,39 @@ def identity_node(state: KYCState):
 @mlflow.trace(name="sanctions Agent")
 def sanctions_node(state: KYCState):
 
-    result = sanctions_agent.run(
-        applicant_id=state["applicant_id"],
-        identity_result=state.get(
-            "identity_result", {}
-        ),
+    applicant_id = state["applicant_id"]
+    logger.info(
+        f"SANCTIONS AGENT started | applicant={applicant_id}"
     )
 
-    return {
-        "sanctions_result": result.get(
-            "sanctions_result", {}
-        ),
-        "next_action": result.get("next_action"),
-        "messages": [
-            result.get("message", "")
-        ],
-    }
+    try:
+        result = sanctions_agent.run(
+            applicant_id=state["applicant_id"],
+            identity_result=state.get(
+                "identity_result", {}
+            ),
+        )
 
+        sanctions_result = result.get("sanctions_result", {})
+
+        logger.info(
+            f"SANCTIONS AGENT completed | "
+            f"applicant={applicant_id} | "
+            f"status={sanctions_result.get("status")}" 
+        )
+
+        return {
+            "sanctions_result": sanctions_result,
+            "next_action": result.get("next_action"),
+            "messages": [
+                result.get("message", "")
+            ],
+        }
+    
+    except Exception as e:
+        logger.exception(
+            f"SANCTION AGNENT failed| applicant={applicant_id}"
+        )
 
 # ============================================================
 # SANCTIONS REVIEW NODE
@@ -161,6 +231,12 @@ def sanctions_node(state: KYCState):
 def sanctions_review_node(state: KYCState):
 
     applicant_id = state["applicant_id"]
+
+    logger.warning(
+        f"SANCTIONS FEEDBACK LOOP triggered | "
+        f"applicant={applicant_id} | "
+        f"reason=LOW_CONFIDENCE_REVIEW"
+    )
 
     return {
         "sanctions_review_attempted": True,
@@ -179,28 +255,46 @@ def sanctions_review_node(state: KYCState):
 @mlflow.trace(name="policy Agent")
 def policy_node(state: KYCState):
 
-    result = policy_agent.run(
-        applicant_id=state["applicant_id"],
-        document_result=state.get(
-            "document_result", {}
-        ),
-        identity_result=state.get(
-            "identity_result", {}
-        ),
-        sanctions_result=state.get(
-            "sanctions_result", {}
-        ),
+    applicant_id = state["applicant_id"]
+    logger.info(
+        f"POLICY AGENT started | applicant={applicant_id}"
     )
 
-    return {
-        "policy_result": result.get(
-            "policy_result", {}
-        ),
-        "next_action": result.get("next_action"),
-        "messages": [
-            result.get("message", "")
-        ],
-    }
+    try:
+        result = policy_agent.run(
+            applicant_id=state["applicant_id"],
+            document_result=state.get(
+                "document_result", {}
+            ),
+            identity_result=state.get(
+                "identity_result", {}
+            ),
+            sanctions_result=state.get(
+                "sanctions_result", {}
+            ),
+        )
+
+        policy_result = result.get("policy_result", {})
+
+        logger.info(
+            f"POLICY AGENT completed | "
+            f"applicant={applicant_id} | "
+            f"status={policy_result.get("status")}" 
+            f"sources={len(policy_result.get('sources', []))}"
+        )
+
+        return {
+            "policy_result": policy_result,
+            "next_action": result.get("next_action"),
+            "messages": [
+                result.get("message", "")
+            ],
+        }
+    
+    except Exception as e:
+        logger.exception(
+            f"POLICY AGNENT failed| applicant={applicant_id}"
+        )
 
 
 # ============================================================
@@ -209,32 +303,48 @@ def policy_node(state: KYCState):
 @mlflow.trace(name="decision Agent")
 def decision_node(state: KYCState):
 
-    result = decision_agent.run(
-        applicant_id=state["applicant_id"],
-        document_result=state.get(
-            "document_result", {}
-        ),
-        identity_result=state.get(
-            "identity_result", {}
-        ),
-        sanctions_result=state.get(
-            "sanctions_result", {}
-        ),
-        policy_result=state.get(
-            "policy_result", {}
-        ),
+    applicant_id = state["applicant_id"]
+    logger.info(
+        f"DECISION AGENT started | applicant={applicant_id}"
     )
 
-    return {
-        "decision_result": result.get(
-            "decision_result", {}
-        ),
-        "next_action": result.get("next_action"),
-        "messages": [
-            result.get("message", "")
-        ],
-    }
+    try:
+        result = decision_agent.run(
+            applicant_id=state["applicant_id"],
+            document_result=state.get(
+                "document_result", {}
+            ),
+            identity_result=state.get(
+                "identity_result", {}
+            ),
+            sanctions_result=state.get(
+                "sanctions_result", {}
+            ),
+            policy_result=state.get(
+                "policy_result", {}
+            ),
+        )
 
+        decision_result = result.get("decision_result", {})
+        logger.info(
+            f"DECISION AGENT completed | "
+            f"applicant={applicant_id} | "
+            f"decision={decision_result.get('decision')} | "
+            f"confidence={decision_result.get('confidence')}"
+        )
+
+        return {
+            "decision_result": decision_result,
+            "next_action": result.get("next_action"),
+            "messages": [
+                result.get("message", "")
+            ],
+        }
+    
+    except Exception as e:
+        logger.exception(
+            f"DECISION AGNENT failed| applicant={applicant_id}"
+        )
 
 # ============================================================
 # ROUTE AFTER DECISION AGENT
@@ -271,6 +381,12 @@ def route_after_decision(state: KYCState):
         "REJECT",
         "MORE_DOCUMENTS",
     ):
+        logger.info(
+            f"WORKFLOW completed | "
+            f"applicant={applicant_id} | "
+            f"decision={decision}"
+        )
+
         return "end"
 
     # One-time low-confidence feedback loop
@@ -279,12 +395,22 @@ def route_after_decision(state: KYCState):
         and confidence == "LOW"
         and not review_attempted
     ):
+        logger.warning(
+            f"WORKFLOW routing | "
+            f"applicant={applicant_id} | "
+            f"next=SANCTIONS_REVIEW"
+        )
+
         return "sanctions_review"
 
     # If review has already been attempted,
     # stop the workflow.
+    logger.info(
+        f"WORKFLOW completed | "
+        f"applicant={applicant_id} | "
+        f"decision={decision}"
+    )
     return "end"
-
 
 # ============================================================
 # BUILD LANGGRAPH WORKFLOW
