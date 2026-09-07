@@ -99,7 +99,7 @@ def document_node(state: KYCState):
         logger.info(
             f"DOCUMENT AGENT completed | "
             f"applicant={applicant_id} | "
-            f"status={document_result.get("status")}" 
+            f"status={document_result.get('status')}" 
         )
 
         return {
@@ -119,6 +119,7 @@ def document_node(state: KYCState):
 
 def route_after_document(state: KYCState):
     document_result = state.get("document_result", {})
+    applicant_id = state["applicant_id"]
 
     if document_result.get("status") == "INCOMPLETE":
 
@@ -163,7 +164,7 @@ def identity_node(state: KYCState):
         logger.info(
             f"IDENTITY AGENT completed | "
             f"applicant={applicant_id} | "
-            f"status={identity_result.get("status")}" 
+            f"status={identity_result.get('status')}" 
         )
 
         return {
@@ -204,7 +205,7 @@ def sanctions_node(state: KYCState):
         logger.info(
             f"SANCTIONS AGENT completed | "
             f"applicant={applicant_id} | "
-            f"status={sanctions_result.get("status")}" 
+            f"status={sanctions_result.get('status')}" 
         )
 
         return {
@@ -279,7 +280,7 @@ def policy_node(state: KYCState):
         logger.info(
             f"POLICY AGENT completed | "
             f"applicant={applicant_id} | "
-            f"status={policy_result.get("status")}" 
+            f"status={policy_result.get('status')} | " 
             f"sources={len(policy_result.get('sources', []))}"
         )
 
@@ -358,6 +359,7 @@ def decision_node(state: KYCState):
 
 def route_after_decision(state: KYCState):
 
+    applicant_id = state["applicant_id"]
     decision_result = state.get(
         "decision_result", {}
     )
