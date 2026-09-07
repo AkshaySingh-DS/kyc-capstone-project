@@ -78,7 +78,7 @@ class DocumentProcessor:
 
             logger.info(
                 f"FIELD EXTRACTION completed | "
-                f"file={image_path} | Document_type= {fields.get("document_type")} | "
+                f"file={image_path} | Document_type= {fields.get('document_type')} | "
                 f"fields_found={[field for field in fields.keys()]}"
             )
 
@@ -92,7 +92,7 @@ class DocumentProcessor:
 
             logger.info(
                 f"FIELD validation completed | "
-                f"fields_valid={validation.get("valid")} | "
+                f"fields_valid={validation.get('valid')} | "
             )
 
             # -----------------------------------------------------
@@ -103,7 +103,7 @@ class DocumentProcessor:
                 f"Document Processing completed | "
                 f"file={image_path}"
             )   
-            
+
             return {
                 "document": image_path.name,
                 "raw_text": raw_text,
