@@ -907,6 +907,11 @@ Recommendation:
         # -------------------------------------------------
 
         try:
+            logger.info(
+                f"Using IBM watsonx Llama 4 Maverick | "
+                f"LLM Explanation | Passing all Agents Outcome to LLM | " 
+                f"DETERMINISTIC DECISION"
+            )
 
             response = self.model.chat(
                 messages=[
