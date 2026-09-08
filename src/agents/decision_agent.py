@@ -1,5 +1,6 @@
 from ibm_watsonx_ai.foundation_models import ModelInference
 from ibm_watsonx_ai import Credentials
+from src.utils.logger import logger
 
 # =========================================================
 # Configuration
@@ -837,6 +838,10 @@ Recommendation:
         # -------------------------------------------------
         # 1. Determine decision
         # -------------------------------------------------
+        logger.info(
+            f"DECISION EVALUATION started | applicant={applicant_id}| "
+            f"Retreiving each Agent outcome "
+        )
 
         decision, reasons = (
             self.determine_decision(
@@ -924,9 +929,9 @@ Recommendation:
 
         except Exception as e:
 
-            explanation = (
-                "LLM explanation could not be generated: "
-                f"{str(e)}"
+            logger.exception(
+                f"DECISION EVALUATION failed | "
+                f"LLM explanation could not be generated "
             )
 
         # -------------------------------------------------
@@ -939,6 +944,9 @@ Recommendation:
             )
         )
 
+        logger.info(
+            f"DECISION EVALUATION In progress | "
+            f"Building final audit-ready result"
         # -------------------------------------------------
         # 7. Build final audit-ready result
         # -------------------------------------------------
@@ -986,6 +994,11 @@ Recommendation:
             "next_action":
                 next_action,
         }
+
+        logger.info(
+            f"DECISION EVALUATION completed | "
+            f"applicant={applicant_id} | "
+        )
 
         return {
 
