@@ -947,6 +947,7 @@ Recommendation:
         logger.info(
             f"DECISION EVALUATION In progress | "
             f"Building final audit-ready result"
+        )
         # -------------------------------------------------
         # 7. Build final audit-ready result
         # -------------------------------------------------
