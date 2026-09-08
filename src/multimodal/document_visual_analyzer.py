@@ -3,9 +3,9 @@ import json
 import mimetypes
 import re
 from pathlib import Path
-
 from ibm_watsonx_ai.foundation_models import ModelInference
 from ibm_watsonx_ai import Credentials
+from src.utils.logger import logger
 
 
 # ---------------------------------------------------------
@@ -48,6 +48,9 @@ class DocumentVisualAnalyzer:
             url=WATSONX_URL
         )
 
+        logger.info(
+            f"IBM WatsonX LLAMA4 Maverick Model is being initialized."
+        )
         self.model = ModelInference(
             model_id=MODEL_ID,
             credentials=credentials,
@@ -312,21 +315,21 @@ class DocumentVisualAnalyzer:
 
         if not image_path.exists():
 
-            raise FileNotFoundError(
-                f"Document not found: "
-                f"{image_path}"
+            logger.exception(
+                f"Document not found | "
+                f"filen={image_path}"    
             )
 
         if not image_path.is_file():
 
-            raise ValueError(
-                f"Document path is not a file: "
-                f"{image_path}"
+            logger.exception(
+                f"Document path is not a file | "
+                f"file={image_path}"    
             )
 
-        print(
-            f"\nAnalyzing document: "
-            f"{image_path.name}"
+        logger.info(
+            f"DOCUMENT VISUAL ANALYSIS started | "
+            f"{image_path.name}"      
         )
 
         # -------------------------------------------------
@@ -530,6 +533,10 @@ document tampering.
             TypeError
         ):
 
+            logger.warning(
+                f"DOCUMENT VISUAL ANALYSIS completed | Unexpcted Response from Vision Model"
+            )
+
             return {
                 "document": image_path.name,
                 "assessment": (
@@ -561,12 +568,20 @@ document tampering.
                 )
             )
 
+            logger.info(
+                f"DOCUMENT VISUAL ANALYSIS completed | {image_path.name} "
+            )
+
             return {
                 "document": image_path.name,
                 **normalized_result
             }
 
         except ValueError:
+
+            logger.warning(
+                f"DOCUMENT VISUAL ANALYSIS completed | Model Return Invalid JSON "
+            )
 
             return {
                 "document": image_path.name,

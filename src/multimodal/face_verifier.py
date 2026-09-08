@@ -2,9 +2,9 @@ import base64
 import json
 import re
 from pathlib import Path
-
 from ibm_watsonx_ai.foundation_models import ModelInference
 from ibm_watsonx_ai import Credentials
+from src.utils.logger import logger
 
 
 # ---------------------------------------------------------
@@ -56,6 +56,11 @@ class FaceVerifier:
 
         credentials = Credentials(
             url=WATSONX_URL
+        )
+
+
+        logger.info(
+            f"IBM WatsonX LLAMA4 Maverick Model is being initialized."
         )
 
         self.model = ModelInference(
@@ -337,7 +342,6 @@ class FaceVerifier:
         - assessment
         - observations
         """
-
         id_photo_path = Path(
             id_photo_path
         )
@@ -345,12 +349,19 @@ class FaceVerifier:
         selfie_path = Path(
             selfie_path
         )
+        logger.info(
+            f"FACE VERIFICATION started"
+        )
 
         # -------------------------------------------------
         # Validate input files
         # -------------------------------------------------
 
         if not id_photo_path.exists():
+            logger.warning(
+                f"FACE VERIFICATION failed | "
+                f"Photo ID  Not Found "
+            )
 
             return {
                 "id_photo": id_photo_path.name,
@@ -364,6 +375,11 @@ class FaceVerifier:
             }
 
         if not selfie_path.exists():
+
+            logger.warning(
+                f"FACE VERIFICATION failed | "
+                f"Selfie  Not Found "
+            )
 
             return {
                 "id_photo": id_photo_path.name,
@@ -382,15 +398,32 @@ class FaceVerifier:
 
         try:
 
+            logger.info(
+                f"Encoding Image | image={id_photo_path.name} "
+            )
+
             id_image = self.encode_image(
                 str(id_photo_path)
+            )
+
+            logger.info(
+                f"Encoding Completed | image={id_photo_path.name} "
+                f"\nEncoding Image | image={selfie_path.name}"
             )
 
             selfie_image = self.encode_image(
                 str(selfie_path)
             )
 
+            logger.info(
+                f"Encoding Completed | image={selfie_path.name}"
+            )
+
         except Exception as e:
+
+            logger.warning(
+                f"Image Encoding Failed | image={id_photo_path.name} | image={selfie_path.name}"
+            )
 
             return {
                 "id_photo": id_photo_path.name,
@@ -505,6 +538,11 @@ Do not include explanations outside the JSON.
 
         try:
 
+
+            logger.info(
+                f"Calling IBM WatsonX LLAMA4 Maverick Vision Model"
+            )
+
             response = self.model.chat(
                 messages=messages
             )
@@ -516,7 +554,10 @@ Do not include explanations outside the JSON.
             )
 
         except Exception as e:
-
+            logger.exception(
+                f"FACE VERIFICATION Uncertain | Vision Model Failed | "
+                f"image={id_photo_path.name} | image={selfie_path.name}"
+            )
             return {
                 "id_photo": id_photo_path.name,
                 "selfie": selfie_path.name,
@@ -553,6 +594,11 @@ Do not include explanations outside the JSON.
 
             if result is None:
 
+                logger.exception(
+                    f"FACE VERIFICATION Uncertain | Parisng Failed | "
+                    f"image={id_photo_path.name} | image={selfie_path.name}"
+                )
+
                 return {
                     "id_photo": id_photo_path.name,
                     "selfie": selfie_path.name,
@@ -578,6 +624,11 @@ Do not include explanations outside the JSON.
             )
 
         except ValueError as e:
+
+            logger.exception(
+                f"FACE VERIFICATION Uncertain | Normalizer Failed | "
+                f"image={id_photo_path.name} | image={selfie_path.name}"
+            )
 
             return {
                 "id_photo": id_photo_path.name,
@@ -633,6 +684,11 @@ Do not include explanations outside the JSON.
         # -------------------------------------------------
         # Final result
         # -------------------------------------------------
+
+        logger.info(
+            f"FACE VERIFICATION completed | image={id_photo_path.name} | image={selfie_path.name} | "
+            f"face_similarity_score={similarity}  | status={assessment}"
+        )
 
         return {
             "id_photo": id_photo_path.name,

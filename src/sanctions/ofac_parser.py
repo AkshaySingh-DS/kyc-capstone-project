@@ -1,6 +1,6 @@
 from pathlib import Path
 import xml.etree.ElementTree as ET
-
+from src.utils.logger import logger
 
 class OFACParser:
     """
@@ -23,6 +23,11 @@ class OFACParser:
         self.xml_path = Path(xml_path)
 
         if not self.xml_path.exists():
+            
+            logger.warning(
+                f"OFAC PARSER failed | OFAC XML record not found"
+            )
+
             raise FileNotFoundError(
                 f"OFAC XML file not found: {self.xml_path}"
             )
@@ -34,6 +39,8 @@ class OFACParser:
         Returns:
             List of normalized OFAC records.
         """
+
+        logger.info("OFAC parser started | OFAC_SDN_records={self.xml_path.name} ")
 
         tree = ET.parse(self.xml_path)
         root = tree.getroot()
@@ -283,6 +290,10 @@ class OFACParser:
                     "programs": programs,
                 }
             )
+
+        logger.info(
+            f"OFAC parser completed | records_loaded={len(records)}"
+        )
 
         return records
 

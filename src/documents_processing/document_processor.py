@@ -39,23 +39,24 @@ class DocumentProcessor:
                 "fields": {...},
                 "validation": {...}
             }
-        """
-
-        logger.info(
-            f"Document Processing started | "
-            f"file={image_path}"
-        )        
+        """    
 
         try:
 
             image_path = Path(image_path)
+
+            logger.info(
+                f"Document Processing started | "
+                f"file={image_path.name}"
+            )    
+            
             # -----------------------------------------------------
             # 1. OCR
             # -----------------------------------------------------
 
             logger.info(
                 f"OCR has started | "
-                f"file={image_path}"
+                f"file={image_path.name}"
             )
 
             raw_text = self.ocr_processor.extract_text(
@@ -64,7 +65,7 @@ class DocumentProcessor:
 
             logger.info(
                 f"OCR has completed | "
-                f"file={image_path} | "
+                f"file={image_path.name} | "
                 f"text_detected={True if raw_text else False}"
             )
 
@@ -78,7 +79,7 @@ class DocumentProcessor:
 
             logger.info(
                 f"FIELD EXTRACTION completed | "
-                f"file={image_path} | Document_type= {fields.get('document_type')} | "
+                f"Document_type= {fields.get('document_type')} | "
                 f"fields_found={[field for field in fields.keys()]}"
             )
 
@@ -101,9 +102,8 @@ class DocumentProcessor:
 
             logger.info(
                 f"Document Processing completed | "
-                f"file={image_path}"
             )   
-
+            
             return {
                 "document": image_path.name,
                 "raw_text": raw_text,
@@ -114,7 +114,7 @@ class DocumentProcessor:
         except Exception as e:
             logger.exception(
                 f"Document Not Found| "
-                f"file={image_path}"
+                f"Document_type= {fields.get('document_type')} "
             )
             
 

@@ -2,6 +2,7 @@ from rapidfuzz import fuzz
 
 from .ofac_parser import OFACParser
 from src.identity.normalizer import normalize_name
+from src.utils.logger import logger
 
 
 # ---------------------------------------------------------
@@ -60,15 +61,15 @@ class SanctionsScreener:
             ofac_xml_path
         )
 
-        print(
-            "Loading OFAC sanctions list..."
+        logger.info(
+            "Loading OFAC sanctions list..."    
         )
 
         self.records = parser.parse()
 
-        print(
-            f"OFAC records loaded: "
-            f"{len(self.records)}"
+        logger.info(
+            f"OFAC records loaded | "
+            f"recrods={len(self.records)}"
         )
 
     # =========================================================
@@ -500,11 +501,19 @@ class SanctionsScreener:
             "name"
         )
 
+        logger.info(
+            f"SANCTIONS SCREENING started | applicant={applicant_id}"
+        )
+        
         # -----------------------------------------------------
         # Validate applicant
         # -----------------------------------------------------
 
         if not applicant_name:
+
+            logger.warning(
+                f"SANCTIONS SCREENING failed | applicant={applicant_id}"
+            )
 
             return {
                 "applicant_id": applicant_id,
@@ -528,6 +537,10 @@ class SanctionsScreener:
         # -----------------------------------------------------
 
         if not candidates:
+
+            logger.info(
+                f"SANCTIONS SCREENING Completed  | applicant={applicant_id} | status=CLEAR"
+            )
 
             return {
                 "applicant_id": applicant_id,
@@ -577,12 +590,24 @@ class SanctionsScreener:
             screening_status = (
                 "POTENTIAL_MATCH"
             )
+            
+            logger.info(
+                f"SANCTIONS SCREENING Completed |  flagged candidate | applicant={applicant_id} | status={screening_status}"
+            )
 
         elif reviews:
 
             screening_status = "REVIEW"
+            
+            logger.info(
+                f"SANCTIONS SCREENING Completed | flagged candidate | applicant={applicant_id} | status={screening_status}"
+            )
 
         else:
+
+            logger.info(
+                f"SANCTIONS SCREENING Completed  | applicant={applicant_id} | status=CLEAR"
+            )
 
             screening_status = "CLEAR"
 
