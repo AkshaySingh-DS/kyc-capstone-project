@@ -2,6 +2,7 @@ from ibm_watsonx_ai.foundation_models import ModelInference
 from ibm_watsonx_ai import Credentials
 
 from .retriever import RBIPolicyRetriever
+from src.utils.logger import logger
 
 
 # ---------------------------------------------------------
@@ -26,6 +27,10 @@ class RBIPolicyAnswer:
             url=WATSONX_URL
         )
 
+        logger.info(
+            f"IBM WatsonX LLAMA4 Maverick Model is being initialized."
+        )
+        
         self.model = ModelInference(
             model_id=MODEL_ID,
             credentials=credentials,
@@ -35,6 +40,9 @@ class RBIPolicyAnswer:
                 "max_tokens": 500
             }
         )
+        logger.info(
+            f"Chroma Reriever initialized"
+        )
 
         self.retriever = RBIPolicyRetriever()
 
@@ -43,6 +51,10 @@ class RBIPolicyAnswer:
         # -------------------------------------------------
         # 1. Retrieve RBI policy evidence
         # -------------------------------------------------
+        logger.info(
+            f"POLICY RETRIEVAL started | "
+            f"Retrieving the Policy documents document"
+        )
 
         results = self.retriever.search(
             question,
@@ -53,11 +65,21 @@ class RBIPolicyAnswer:
         metadatas = results.get("metadatas", [[]])[0]
 
         if not documents:
+
+            logger.warning(
+                f"POLICY RETRIEVAL returned no evidence "
+            )
+
             return {
                 "question": question,
                 "answer": "Insufficient evidence in the retrieved RBI policy.",
                 "sources": []
             }
+
+        logger.info(
+            f"POLICY RETRIEVAL completed | "
+            f"documents_retrieved={len(documents)}"
+        )
 
         # -------------------------------------------------
         # 2. Build context

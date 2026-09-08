@@ -205,7 +205,7 @@ def sanctions_node(state: KYCState):
         logger.info(
             f"SANCTIONS AGENT completed | "
             f"applicant={applicant_id} | "
-            f"status={sanctions_result.get('status')}" 
+            f"status={sanctions_result.get('screening_status')}" 
         )
 
         return {

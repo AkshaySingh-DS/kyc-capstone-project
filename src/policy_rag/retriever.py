@@ -1,9 +1,8 @@
 from pathlib import Path
-
 import chromadb
-
 from ibm_watsonx_ai.metanames import EmbedTextParamsMetaNames
 from langchain_ibm import WatsonxEmbeddings
+from src.utils.logger import logger
 
 
 # ---------------------------------------------------------
@@ -37,11 +36,15 @@ class RBIPolicyRetriever:
 
         # WatsonX embedding configuration
         embed_params = {
-            EmbedTextParamsMetaNames.TRUNCATE_INPUT_TOKENS: 3,
+            EmbedTextParamsMetaNames.TRUNCATE_INPUT_TOKENS: 256,
             EmbedTextParamsMetaNames.RETURN_OPTIONS: {
                 "input_text": True
             },
         }
+
+        logger.info(
+            f"IBM Watsonx {EMBEDDING_MODEL} is being initialized"
+        )
 
         self.embeddings = WatsonxEmbeddings(
             model_id=EMBEDDING_MODEL,
@@ -64,6 +67,10 @@ class RBIPolicyRetriever:
         Search the RBI policy collection using
         WatsonX embeddings.
         """
+
+        logger.info(
+            f"Using IBM Watsonx {EMBEDDING_MODEL} Embedding Model"
+        )
 
         # Create query embedding
         query_embedding = self.embeddings.embed_query(
